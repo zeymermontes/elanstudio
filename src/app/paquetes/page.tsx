@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Check } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { BuyButton } from "@/components/buy-button";
 import { getPackages } from "@/lib/data";
 import { formatMxn } from "@/lib/format";
 
@@ -39,10 +39,13 @@ export default async function PaquetesPage() {
                 {p.description}
               </p>
 
-              <div className="my-6">
+              <div className="my-6 flex items-baseline gap-1.5">
                 <span className="font-serif text-4xl text-pink-strong">
                   {formatMxn(p.priceMxn)}
                 </span>
+                {p.recurring ? (
+                  <span className="text-sm text-ink-soft">/ mes</span>
+                ) : null}
               </div>
 
               <ul className="space-y-2 text-sm text-ink-soft">
@@ -52,7 +55,9 @@ export default async function PaquetesPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={15} strokeWidth={1.5} className="text-gold" />
-                  Vigencia de {p.validityDays} días
+                  {p.recurring
+                    ? "Renovación automática mensual"
+                    : `Vigencia de ${p.validityDays} días`}
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={15} strokeWidth={1.5} className="text-gold" />
@@ -60,7 +65,16 @@ export default async function PaquetesPage() {
                 </li>
               </ul>
 
-              <BuyButton packageId={p.id} featured={p.featured} />
+              <Link
+                href={`/comprar/${p.id}`}
+                className={`mt-7 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm uppercase tracking-[0.18em] transition-colors ${
+                  p.featured
+                    ? "bg-pink text-white hover:bg-pink-strong"
+                    : "border border-gold/50 text-ink hover:border-gold hover:text-pink-strong"
+                }`}
+              >
+                {p.recurring ? "Suscribirme" : "Comprar"}
+              </Link>
             </article>
           );
         })}

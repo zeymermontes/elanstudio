@@ -12,6 +12,7 @@
     "monitor": "bash scripts/monitor.sh"
   },
   "dependencies": {
+    "@mercadopago/sdk-react": "^1.0.7",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "date-fns": "^4.4.0",

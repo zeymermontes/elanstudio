@@ -131,6 +131,21 @@ export async function getAllPackages(): Promise<Package[]> {
   return data.map(mapPackage);
 }
 
+/** A single package by id (active only), or null. */
+export async function getPackageById(id: string): Promise<Package | null> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) {
+    return seedPackages.find((p) => p.id === id) ?? null;
+  }
+  const { data } = await supabase
+    .from("packages")
+    .select("*")
+    .eq("id", id)
+    .eq("active", true)
+    .single();
+  return data ? mapPackage(data) : null;
+}
+
 /**
  * Upcoming schedule enriched with class type / coach / location and computed
  * spots-left, sorted chronologically.
@@ -226,6 +241,7 @@ function mapPackage(p: Row): Package {
     validityDays: (p.validity_days as number) ?? 30,
     featured: Boolean(p.featured),
     active: Boolean(p.active),
+    recurring: Boolean(p.recurring),
   };
 }
 

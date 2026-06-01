@@ -49,6 +49,10 @@ export function PackageForm({ pkg }: { pkg?: Package }) {
             Destacado
           </label>
           <label className="flex items-center gap-2 text-sm text-ink-soft">
+            <input type="checkbox" name="recurring" defaultChecked={pkg?.recurring} className="accent-pink" />
+            Suscripción mensual
+          </label>
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
             Estado
             <select
               name="active"

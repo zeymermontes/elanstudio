@@ -143,6 +143,7 @@ export const packages: Package[] = [
     validityDays: 30,
     featured: false,
     active: true,
+    recurring: false,
   },
   {
     id: "pkg-5",
@@ -153,6 +154,7 @@ export const packages: Package[] = [
     validityDays: 60,
     featured: false,
     active: true,
+    recurring: false,
   },
   {
     id: "pkg-10",
@@ -163,6 +165,7 @@ export const packages: Package[] = [
     validityDays: 90,
     featured: true,
     active: true,
+    recurring: false,
   },
   {
     id: "pkg-unlimited",
@@ -173,6 +176,7 @@ export const packages: Package[] = [
     validityDays: 30,
     featured: false,
     active: true,
+    recurring: true,
   },
 ];
 

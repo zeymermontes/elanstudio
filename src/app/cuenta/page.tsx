@@ -25,9 +25,9 @@ type BookingRow = {
 export default async function CuentaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reservar?: string; pago?: string }>;
+  searchParams: Promise<{ reservar?: string; pago?: string; suscripcion?: string }>;
 }) {
-  const { reservar, pago } = await searchParams;
+  const { reservar, pago, suscripcion } = await searchParams;
 
   // Demo mode: no backend configured yet.
   if (!isSupabaseConfigured()) {
@@ -45,7 +45,7 @@ export default async function CuentaPage({
     redirect(`/ingresar?next=${encodeURIComponent(next)}`);
   }
 
-  const [{ data: profile }, { data: balance }, { data: bookings }] =
+  const [{ data: profile }, { data: balance }, { data: bookings }, { data: sub }] =
     await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", user.id).single(),
       supabase.rpc("credit_balance", { p_user: user.id }),
@@ -56,17 +56,30 @@ export default async function CuentaPage({
         )
         .eq("user_id", user.id)
         .eq("status", "confirmed"),
+      supabase
+        .from("subscriptions")
+        .select("status, current_period_end")
+        .eq("user_id", user.id)
+        .eq("status", "authorized")
+        .order("current_period_end", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
   // Server component (force-dynamic): reading the current time is intentional.
   // eslint-disable-next-line react-hooks/purity
-  const now = Date.now();
+  const nowMs = Date.now();
+  const subActive =
+    !!sub &&
+    (!sub.current_period_end ||
+      new Date(sub.current_period_end).getTime() > nowMs);
+
   const upcoming = ((bookings ?? []) as unknown as BookingRow[])
     .filter(
       (b) =>
         b.class_sessions &&
         b.class_sessions.status === "scheduled" &&
-        new Date(b.class_sessions.starts_at).getTime() >= now,
+        new Date(b.class_sessions.starts_at).getTime() >= nowMs,
     )
     .sort((a, b) =>
       (a.class_sessions!.starts_at).localeCompare(b.class_sessions!.starts_at),
@@ -117,6 +130,12 @@ export default async function CuentaPage({
       <div className="gold-rule my-7 w-full" />
 
       {pago ? <PagoBanner status={pago} /> : null}
+      {suscripcion ? (
+        <div className="mb-8 rounded-2xl bg-gold-soft/40 px-6 py-4 text-sm text-ink">
+          ¡Gracias! Tu suscripción se está activando. Se reflejará en unos
+          momentos.
+        </div>
+      ) : null}
 
       {reservar && reservarLabel ? (
         <ConfirmReserve sessionId={reservar} label={reservarLabel} />
@@ -128,10 +147,10 @@ export default async function CuentaPage({
           <Sparkles size={22} strokeWidth={1.25} className="text-pink" />
           <div>
             <p className="font-serif text-3xl text-ink">
-              {credits >= 999 ? "Ilimitado" : credits}
+              {subActive ? "Ilimitado" : credits}
             </p>
             <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">
-              Créditos disponibles
+              {subActive ? "Suscripción mensual activa" : "Créditos disponibles"}
             </p>
           </div>
         </div>

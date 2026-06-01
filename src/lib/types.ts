@@ -50,6 +50,7 @@ export type Package = {
   validityDays: number;
   featured: boolean;
   active: boolean;
+  recurring: boolean; // true = monthly subscription, false = one-time credits
 };
 
 export type ClassSession = {

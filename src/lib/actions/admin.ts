@@ -73,6 +73,7 @@ export async function savePackageAction(
     validity_days: num(fd, "validity_days"),
     featured: fd.get("featured") === "on",
     active: str(fd, "active") !== "false",
+    recurring: fd.get("recurring") === "on",
   };
 
   const { error } = id
