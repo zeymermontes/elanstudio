@@ -1,0 +1,61 @@
+<!--
+  ÉLANSTUDIO — Supabase "Change Email Address" template (Spanish).
+  Paste into: Supabase Dashboard → Authentication → Email Templates → Change Email Address
+  Subject suggestion: Confirma tu nuevo correo · ÉLANSTUDIO
+  Variables: {{ .ConfirmationURL }} {{ .Email }} (actual) {{ .NewEmail }} (nuevo)
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f4ef;margin:0;padding:32px 0;font-family:Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#fffdfb;border:1px solid #ece4db;border-radius:16px;overflow:hidden;">
+        <tr>
+          <td align="center" style="padding:40px 32px 8px 32px;">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:600;letter-spacing:4px;color:#d6849a;">ÉLANSTUDIO</div>
+            <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#8c817b;margin-top:6px;">Built by two · Designed for all</div>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:18px 32px;">
+            <div style="height:1px;width:120px;background-color:#c7a86a;margin:0 auto;"></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:8px 40px 8px 40px;text-align:center;">
+            <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:28px;color:#574e49;margin:0 0 16px 0;">Confirma tu nuevo correo</h1>
+            <p style="font-size:15px;line-height:1.6;color:#8c817b;margin:0 0 20px 0;">
+              Solicitaste cambiar el correo de tu cuenta de
+              <span style="color:#574e49;">{{ .Email }}</span> a
+              <span style="color:#574e49;">{{ .NewEmail }}</span>.
+              Confirma el cambio con el siguiente botón.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:0 40px 8px 40px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" bgcolor="#e29aaa" style="border-radius:999px;">
+                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 36px;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:999px;background-color:#e29aaa;">Confirmar nuevo correo</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 40px 8px 40px;text-align:center;">
+            <p style="font-size:12px;line-height:1.6;color:#8c817b;margin:0;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
+            <p style="font-size:12px;line-height:1.5;margin:8px 0 0 0;word-break:break-all;">
+              <a href="{{ .ConfirmationURL }}" style="color:#d6849a;">{{ .ConfirmationURL }}</a>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px 40px 36px 40px;text-align:center;border-top:1px solid #ece4db;">
+            <p style="font-size:11px;line-height:1.6;color:#b3a9a2;margin:0;">Si no solicitaste este cambio, ignora este correo; tu correo no se modificará.</p>
+            <p style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#c7a86a;margin:12px 0 0 0;">ÉLANSTUDIO</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
