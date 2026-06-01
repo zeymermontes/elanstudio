@@ -22,6 +22,14 @@ function str(fd: FormData, k: string) {
 function num(fd: FormData, k: string) {
   return Number(fd.get(k) ?? 0);
 }
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 // ---------------------------------------------------------------------------
 // Brand / settings
@@ -173,6 +181,88 @@ export async function deleteLocationAction(id: string): Promise<FormState> {
   if (error) return { error: error.message };
   revalidatePath("/admin/ubicaciones");
   revalidatePath("/ubicaciones");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Services
+// ---------------------------------------------------------------------------
+export async function saveServiceAction(
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+
+  const id = str(fd, "id");
+  const name = str(fd, "name");
+  const row = {
+    name,
+    slug: str(fd, "slug") || slugify(name),
+    description: str(fd, "description"),
+    order: num(fd, "order"),
+  };
+
+  const { error } = id
+    ? await supabase.from("services").update(row).eq("id", id)
+    : await supabase.from("services").insert(row);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/clases");
+  revalidatePath("/clases");
+  return { ok: true };
+}
+
+export async function deleteServiceAction(id: string): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  const { error } = await supabase.from("services").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/clases");
+  revalidatePath("/clases");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Class types
+// ---------------------------------------------------------------------------
+export async function saveClassTypeAction(
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+
+  const id = str(fd, "id");
+  const row = {
+    service_id: str(fd, "service_id") || null,
+    name: str(fd, "name"),
+    description: str(fd, "description"),
+    duration_min: num(fd, "duration_min") || 50,
+    level: str(fd, "level") || "Todos los niveles",
+    default_capacity: num(fd, "default_capacity") || 10,
+  };
+
+  const { error } = id
+    ? await supabase.from("class_types").update(row).eq("id", id)
+    : await supabase.from("class_types").insert(row);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/clases");
+  revalidatePath("/admin/horario");
+  revalidatePath("/clases");
+  return { ok: true };
+}
+
+export async function deleteClassTypeAction(id: string): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  // Note: deleting a class type also removes its scheduled sessions (FK cascade).
+  const { error } = await supabase.from("class_types").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/clases");
+  revalidatePath("/admin/horario");
+  revalidatePath("/clases");
   return { ok: true };
 }
 

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Palette,
+  Dumbbell,
   CalendarDays,
   Package,
   Users,
@@ -16,6 +17,7 @@ import {
 const items = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/ajustes", label: "Marca", icon: Palette },
+  { href: "/admin/clases", label: "Clases", icon: Dumbbell },
   { href: "/admin/horario", label: "Horario", icon: CalendarDays },
   { href: "/admin/paquetes", label: "Paquetes", icon: Package },
   { href: "/admin/coaches", label: "Coaches", icon: Users },
