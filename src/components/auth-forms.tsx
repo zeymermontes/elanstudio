@@ -66,6 +66,27 @@ export function SignUpForm() {
     signUpAction,
     null,
   );
+
+  // After signup with email confirmation, replace the form with a check-inbox note.
+  if (state?.success) {
+    return (
+      <div className="space-y-4 text-center">
+        <div className="rounded-xl bg-gold-soft/40 px-4 py-4 text-sm leading-relaxed text-ink">
+          {state.success}
+        </div>
+        <p className="text-xs text-ink-soft">
+          Una vez confirmado, podrás ingresar a tu cuenta.
+        </p>
+        <Link
+          href="/ingresar"
+          className="inline-flex rounded-full border border-gold/50 px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-ink transition-colors hover:border-gold hover:text-pink-strong"
+        >
+          Ir a ingresar
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <form action={action} className="space-y-4">
       <ErrorNote error={state?.error} />

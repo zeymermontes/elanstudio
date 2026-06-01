@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-export type AuthState = { error?: string } | null;
+export type AuthState = { error?: string; success?: string } | null;
 
 const NOT_CONFIGURED =
   "El backend aún no está configurado. Agrega las credenciales de Supabase en .env.local.";
@@ -45,14 +45,20 @@ export async function signUpAction(
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: NOT_CONFIGURED };
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { full_name: fullName, phone } },
   });
   if (error) return { error: error.message };
 
-  redirect("/cuenta");
+  // If email confirmation is enabled there is no session yet — tell the user to
+  // check their inbox. If it's disabled, signUp returns a session: go straight in.
+  if (data.session) redirect("/cuenta");
+  return {
+    success:
+      "Te enviamos un correo para confirmar tu cuenta. Revisa tu bandeja de entrada (y la carpeta de spam).",
+  };
 }
 
 export async function signOutAction() {
