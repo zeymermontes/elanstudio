@@ -1,7 +1,17 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+
+// A stray package-lock.json in the home directory makes Next infer the wrong
+// "workspace root" and watch/trace the entire home folder (the original RAM &
+// freeze problem). Pin the root to THIS project for every bundler.
+const projectRoot = path.resolve(__dirname);
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  turbopack: {
+    root: projectRoot,
+  },
+  // Used by webpack/build file tracing — also scope it to this project.
+  outputFileTracingRoot: projectRoot,
 };
 
 export default nextConfig;

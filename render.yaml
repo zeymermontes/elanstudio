@@ -1,0 +1,27 @@
+# Render blueprint for ÉLANSTUDIO (Next.js web service).
+# Deploy as a Node Web Service — the app has API routes (Mercado Pago webhook,
+# server actions), so it is NOT a static site.
+services:
+  - type: web
+    name: elanstudio
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Set the rest in the Render dashboard (do not commit secrets):
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: NEXT_PUBLIC_MP_PUBLIC_KEY
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false

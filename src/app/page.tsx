@@ -1,65 +1,168 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, Sparkles, HeartHandshake, Flower2 } from "lucide-react";
+import { defaultSettings as s } from "@/lib/site";
+
+const featuredClasses = [
+  {
+    name: "Reformer Pilates",
+    desc: "Fuerza y control en máquina reformer. Tonifica con elegancia.",
+    duration: "50 min",
+  },
+  {
+    name: "Barre Sculpt",
+    desc: "Inspirado en el ballet. Postura, equilibrio y líneas largas.",
+    duration: "45 min",
+  },
+  {
+    name: "Mat & Flow",
+    desc: "Pilates en colchoneta y movilidad consciente para todos los niveles.",
+    duration: "50 min",
+  },
+];
+
+const values = [
+  {
+    icon: Sparkles,
+    title: "Boutique & íntimo",
+    desc: "Grupos reducidos y atención personalizada en cada sesión.",
+  },
+  {
+    icon: HeartHandshake,
+    title: "Diseñado para ti",
+    desc: "Programas para todos los niveles, de principiante a avanzado.",
+  },
+  {
+    icon: Flower2,
+    title: "Un espacio sereno",
+    desc: "Ambiente sobrio y luminoso, pensado para tu bienestar.",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <>
+      {/* ---------- Hero ---------- */}
+      <section className="relative overflow-hidden">
+        <div className="mx-auto max-w-6xl px-5 pt-16 pb-20 sm:pt-24 sm:pb-28">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="mb-5 text-[0.7rem] uppercase tracking-luxe text-gold">
+              Estudio boutique · Fitness & Pilates
+            </p>
+            <h1 className="font-serif text-5xl font-light leading-[1.05] text-ink text-balance sm:text-7xl">
+              Mueve tu cuerpo con{" "}
+              <span className="font-semibold text-pink-strong italic">ÉLAN</span>
+            </h1>
+            <div className="gold-rule mx-auto my-8 w-40" />
+            <p className="mx-auto max-w-xl text-base leading-relaxed text-ink-soft text-balance">
+              Bienvenida a {s.studioName}. Un espacio sereno donde la fuerza se
+              encuentra con la elegancia. Reserva tu clase, elige tu paquete y
+              déjate guiar.
+            </p>
+            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/horarios"
+                className="inline-flex items-center gap-2 rounded-full bg-pink px-8 py-3.5 text-sm uppercase tracking-[0.18em] text-white shadow-soft transition-colors hover:bg-pink-strong"
+              >
+                Reservar clase <ArrowRight size={16} strokeWidth={1.5} />
+              </Link>
+              <Link
+                href="/paquetes"
+                className="inline-flex items-center gap-2 rounded-full border border-gold/50 px-8 py-3.5 text-sm uppercase tracking-[0.18em] text-ink transition-colors hover:border-gold hover:text-pink-strong"
+              >
+                Ver paquetes
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- Values ---------- */}
+      <section className="mx-auto max-w-6xl px-5 py-6">
+        <div className="grid gap-6 md:grid-cols-3">
+          {values.map((v) => (
+            <div
+              key={v.title}
+              className="surface-card rounded-2xl px-7 py-8 text-center shadow-soft"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              <v.icon
+                size={28}
+                strokeWidth={1.25}
+                className="mx-auto text-pink"
+              />
+              <h3 className="mt-4 font-serif text-2xl text-ink">{v.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                {v.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ---------- Featured classes ---------- */}
+      <section className="mx-auto max-w-6xl px-5 py-20">
+        <div className="mb-12 text-center">
+          <p className="mb-3 text-[0.7rem] uppercase tracking-luxe text-gold">
+            Nuestras clases
           </p>
+          <h2 className="font-serif text-4xl font-light text-ink sm:text-5xl">
+            Encuentra tu ritmo
+          </h2>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="grid gap-6 md:grid-cols-3">
+          {featuredClasses.map((c) => (
+            <article
+              key={c.name}
+              className="group surface-card overflow-hidden rounded-2xl shadow-soft"
+            >
+              <div className="flex h-44 items-center justify-center bg-gradient-to-br from-pink-soft to-cream">
+                <span className="font-serif text-3xl text-pink-strong/70 italic">
+                  {c.name.split(" ")[0]}
+                </span>
+              </div>
+              <div className="px-6 py-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-serif text-2xl text-ink">{c.name}</h3>
+                  <span className="text-[0.7rem] uppercase tracking-[0.15em] text-gold">
+                    {c.duration}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                  {c.desc}
+                </p>
+              </div>
+            </article>
+          ))}
         </div>
-      </main>
-    </div>
+        <div className="mt-10 text-center">
+          <Link
+            href="/clases"
+            className="inline-flex items-center gap-2 text-sm uppercase tracking-[0.18em] text-pink-strong transition-colors hover:text-ink"
+          >
+            Ver todas las clases <ArrowRight size={16} strokeWidth={1.5} />
+          </Link>
+        </div>
+      </section>
+
+      {/* ---------- CTA ---------- */}
+      <section className="mx-auto max-w-6xl px-5 pb-8">
+        <div className="surface-card relative overflow-hidden rounded-3xl px-8 py-16 text-center shadow-soft">
+          <p className="mb-3 text-[0.7rem] uppercase tracking-luxe text-gold">
+            Primera vez
+          </p>
+          <h2 className="font-serif text-4xl font-light text-ink sm:text-5xl text-balance">
+            Tu primera clase te está esperando
+          </h2>
+          <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-ink-soft">
+            Crea tu cuenta, compra un paquete y reserva tu lugar en segundos.
+          </p>
+          <Link
+            href="/registro"
+            className="mt-8 inline-flex items-center gap-2 rounded-full bg-pink px-8 py-3.5 text-sm uppercase tracking-[0.18em] text-white shadow-soft transition-colors hover:bg-pink-strong"
+          >
+            Crear mi cuenta <ArrowRight size={16} strokeWidth={1.5} />
+          </Link>
+        </div>
+      </section>
+    </>
   );
 }
