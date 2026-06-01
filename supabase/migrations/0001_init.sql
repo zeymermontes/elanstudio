@@ -393,3 +393,21 @@ cross join lateral (
 cross join lateral (select (day + hh) as slot) s
 where extract(dow from day) <> 0   -- skip Sundays
   and not exists (select 1 from public.class_sessions);
+
+-- ============================================================================
+-- Realtime: stream purchase changes to the admin dashboard so it updates the
+-- instant a payment is recorded. Idempotent (skips if already published).
+-- ============================================================================
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (
+       select 1 from pg_publication_tables
+       where pubname = 'supabase_realtime'
+         and schemaname = 'public'
+         and tablename = 'purchases'
+     )
+  then
+    execute 'alter publication supabase_realtime add table public.purchases';
+  end if;
+end $$;

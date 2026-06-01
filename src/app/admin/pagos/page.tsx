@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatMxn } from "@/lib/format";
+import { PaymentsRealtime } from "@/components/admin/payments-realtime";
 
 export const dynamic = "force-dynamic";
 
@@ -53,9 +54,12 @@ export default async function AdminPagosPage() {
 
   return (
     <div>
-      <h1 className="font-serif text-4xl text-ink">Pagos</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="font-serif text-4xl text-ink">Pagos</h1>
+        <PaymentsRealtime />
+      </div>
       <p className="mt-1 mb-8 text-sm text-ink-soft">
-        Compras de paquetes vía Mercado Pago.
+        Compras de paquetes vía Mercado Pago. La lista se actualiza en vivo.
       </p>
 
       {rows.length === 0 ? (
