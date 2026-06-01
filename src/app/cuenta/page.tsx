@@ -136,11 +136,19 @@ export default async function CuentaPage({
           </p>
           <h1 className="mt-1 font-serif text-4xl text-ink">Hola, {firstName}</h1>
         </div>
-        <form action={signOutAction}>
-          <button className="text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft hover:text-pink-strong">
-            Cerrar sesión
-          </button>
-        </form>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/cuenta/perfil"
+            className="text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft transition-colors hover:text-pink-strong"
+          >
+            Mi información
+          </Link>
+          <form action={signOutAction}>
+            <button className="text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft hover:text-pink-strong">
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
       </div>
 
       <div className="gold-rule my-7 w-full" />
@@ -166,7 +174,7 @@ export default async function CuentaPage({
               {subActive ? "Ilimitado" : credits}
             </p>
             <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">
-              {subActive ? "Suscripción mensual activa" : "Créditos disponibles"}
+              {subActive ? "Suscripción mensual activa" : "Clases disponibles"}
             </p>
           </div>
         </div>
@@ -232,7 +240,7 @@ export default async function CuentaPage({
 function PagoBanner({ status }: { status: string }) {
   const map: Record<string, { text: string; ok: boolean }> = {
     ok: {
-      text: "¡Pago recibido! Tus créditos se acreditan en unos segundos.",
+      text: "¡Pago recibido! Tus clases se acreditan en unos segundos.",
       ok: true,
     },
     pendiente: {

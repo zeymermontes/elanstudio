@@ -47,7 +47,7 @@ export function AdjustCreditsForm({ userId }: { userId: string }) {
   return (
     <form action={action} className="surface-card rounded-2xl px-6 py-6 shadow-soft">
       <input type="hidden" name="user_id" value={userId} />
-      <h3 className="mb-4 font-serif text-xl text-ink">Ajustar créditos</h3>
+      <h3 className="mb-4 font-serif text-xl text-ink">Ajustar clases</h3>
       <div className="space-y-4">
         <StatusBanner state={state} />
         <div className="grid gap-4 sm:grid-cols-2">

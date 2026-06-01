@@ -6,7 +6,7 @@
 const MESSAGES: Record<string, string> = {
   ok: "¡Reserva confirmada!",
   full: "Esta clase ya está llena.",
-  no_credits: "No tienes créditos disponibles. Compra un paquete.",
+  no_credits: "No tienes clases disponibles. Compra un paquete.",
   already: "Ya tienes una reserva para esta clase.",
   closed: "Esta clase ya no está disponible.",
   auth: "Inicia sesión para reservar.",

@@ -33,7 +33,7 @@ export function PackageForm({ pkg }: { pkg?: Package }) {
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Créditos (999 = ilimitado)">
+          <Field label="Clases (999 = ilimitado)">
             <input name="credits" type="number" min={1} defaultValue={pkg?.credits ?? 1} className={inputClass} />
           </Field>
           <Field label="Precio (MXN)">

@@ -11,7 +11,7 @@ export default async function AdminUsuariosPage() {
     <div>
       <h1 className="font-serif text-4xl text-ink">Usuarios</h1>
       <p className="mt-1 mb-8 text-sm text-ink-soft">
-        Miembros registrados. Entra a cada uno para gestionar créditos,
+        Miembros registrados. Entra a cada uno para gestionar clases,
         suscripción y ver asistencias.
       </p>
 
@@ -23,7 +23,7 @@ export default async function AdminUsuariosPage() {
             <thead className="border-b border-line text-[0.65rem] uppercase tracking-[0.12em] text-ink-soft">
               <tr>
                 <th className="px-5 py-3">Miembro</th>
-                <th className="px-5 py-3">Créditos</th>
+                <th className="px-5 py-3">Clases</th>
                 <th className="px-5 py-3">Suscripción</th>
                 <th className="px-5 py-3">Reservas</th>
                 <th className="px-5 py-3"></th>

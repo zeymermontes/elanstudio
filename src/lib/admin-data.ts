@@ -98,6 +98,13 @@ export type MemberDetail = {
     expires_at: string | null;
   }[];
   bookings: MemberBooking[];
+  history: {
+    changed_at: string;
+    birth_date: string | null;
+    health_conditions: string;
+    injuries: string;
+    notes: string;
+  }[];
 };
 
 function firstName(v: { name: string } | { name: string }[] | null): string {
@@ -149,6 +156,13 @@ export async function getMemberDetail(
     .order("created_at", { ascending: false })
     .limit(40);
 
+  const { data: history } = await admin
+    .from("profile_history")
+    .select("changed_at, birth_date, health_conditions, injuries, notes")
+    .eq("user_id", id)
+    .order("changed_at", { ascending: false })
+    .limit(20);
+
   const now = Date.now();
   const subEnd = (sub?.current_period_end as string | null) ?? null;
   const subActive = !!sub && (!subEnd || new Date(subEnd).getTime() > now);
@@ -187,6 +201,7 @@ export async function getMemberDetail(
     subEnd,
     ledger: ledger ?? [],
     bookings,
+    history: history ?? [],
   };
 }
 

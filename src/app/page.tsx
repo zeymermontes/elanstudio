@@ -50,9 +50,9 @@ export default function Home() {
               Estudio boutique · Fitness & Pilates
             </p>
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt={s.studioName}
-              width={543}
+              width={540}
               height={434}
               priority
               className="mx-auto mb-6 h-auto w-72 sm:w-96"

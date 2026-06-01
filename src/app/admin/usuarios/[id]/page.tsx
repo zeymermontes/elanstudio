@@ -92,7 +92,7 @@ export default async function UsuarioDetailPage({
             {m.subActive ? "Ilimitado" : m.credits}
           </p>
           <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">
-            {m.subActive ? "Suscripción activa" : "Créditos disponibles"}
+            {m.subActive ? "Suscripción activa" : "Clases disponibles"}
           </p>
         </div>
         <div className="surface-card rounded-2xl px-6 py-6 shadow-soft">
@@ -121,6 +121,46 @@ export default async function UsuarioDetailPage({
           ) : null}
         </div>
       </div>
+
+      {/* Profile change history */}
+      {m.history.length > 0 ? (
+        <section className="mt-6">
+          <h2 className="mb-4 font-serif text-2xl text-ink">
+            Historial de la ficha
+          </h2>
+          <ol className="relative space-y-4 border-l border-line pl-5">
+            {m.history.map((h, i) => (
+              <li key={i} className="relative">
+                <span className="absolute -left-[1.42rem] top-1.5 h-2 w-2 rounded-full bg-pink" />
+                <p className="text-xs uppercase tracking-[0.12em] text-gold">
+                  {cap(formatDayLabel(h.changed_at))} · {formatTime(h.changed_at)}
+                </p>
+                <div className="surface-card mt-1.5 rounded-xl px-5 py-3 text-sm shadow-soft">
+                  {h.injuries ? (
+                    <p className="text-ink">
+                      <span className="text-ink-soft">Lesiones:</span> {h.injuries}
+                    </p>
+                  ) : null}
+                  {h.health_conditions ? (
+                    <p className="text-ink">
+                      <span className="text-ink-soft">Salud:</span>{" "}
+                      {h.health_conditions}
+                    </p>
+                  ) : null}
+                  {h.notes ? (
+                    <p className="text-ink">
+                      <span className="text-ink-soft">Notas:</span> {h.notes}
+                    </p>
+                  ) : null}
+                  {!h.injuries && !h.health_conditions && !h.notes ? (
+                    <p className="text-ink-soft">Sin información de salud.</p>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       {/* Management */}
       <div className="mt-6 grid gap-5 md:grid-cols-2">
@@ -194,7 +234,7 @@ export default async function UsuarioDetailPage({
       {/* Credit movements */}
       <section className="mt-10">
         <h2 className="mb-4 font-serif text-2xl text-ink">
-          Movimientos de créditos
+          Movimientos de clases
         </h2>
         {m.ledger.length === 0 ? (
           <p className="text-sm text-ink-soft">Sin movimientos.</p>
