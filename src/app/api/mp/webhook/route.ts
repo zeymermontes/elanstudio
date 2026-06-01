@@ -59,7 +59,7 @@ async function handlePayment(
 
   const { data: purchase } = await admin
     .from("purchases")
-    .select("id, user_id, credits, status")
+    .select("id, user_id, credits, status, packages(validity_days)")
     .eq("id", purchaseId)
     .single();
   if (!purchase || purchase.status === "approved") return;
@@ -69,6 +69,17 @@ async function handlePayment(
       .from("purchases")
       .update({ status: "approved", mp_payment_id: String(paymentId) })
       .eq("id", purchase.id);
+
+    // Credits expire after the package's validity window (null = never).
+    const pkg = purchase.packages as
+      | { validity_days: number }
+      | { validity_days: number }[]
+      | null;
+    const validity = Array.isArray(pkg) ? pkg[0]?.validity_days : pkg?.validity_days;
+    const expiresAt = validity
+      ? new Date(Date.now() + validity * 86400000).toISOString()
+      : null;
+
     // Unique index on (ref_id) where reason='purchase' makes this idempotent.
     await admin
       .from("credit_ledger")
@@ -77,6 +88,7 @@ async function handlePayment(
         delta: purchase.credits,
         reason: "purchase",
         ref_id: purchase.id,
+        expires_at: expiresAt,
       })
       .select()
       .maybeSingle();

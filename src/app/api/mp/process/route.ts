@@ -32,13 +32,18 @@ export async function POST(req: NextRequest) {
   // recurring packages here — those go through the subscription flow.
   const { data: pkg } = await admin
     .from("packages")
-    .select("id, name, price_mxn, credits, recurring")
+    .select("id, name, price_mxn, credits, recurring, validity_days")
     .eq("id", packageId)
     .eq("active", true)
     .single();
   if (!pkg || pkg.recurring) {
     return NextResponse.json({ error: "not_found" }, { status: 400 });
   }
+
+  // Credits expire after the package's validity window (null = never).
+  const expiresAt = pkg.validity_days
+    ? new Date(Date.now() + pkg.validity_days * 86400000).toISOString()
+    : null;
 
   const { data: purchase } = await admin
     .from("purchases")
@@ -90,6 +95,7 @@ export async function POST(req: NextRequest) {
           delta: pkg.credits,
           reason: "purchase",
           ref_id: purchase.id,
+          expires_at: expiresAt,
         })
         .select()
         .maybeSingle();
