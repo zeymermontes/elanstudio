@@ -11,6 +11,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-sm leading-relaxed text-ink">{value}</dd>
+    </div>
+  );
+}
+
 const REASONS: Record<string, string> = {
   purchase: "Compra",
   booking: "Reserva",
@@ -52,8 +63,26 @@ export default async function UsuarioDetailPage({
       <p className="mt-1 text-sm text-ink-soft">
         {m.email}
         {m.phone ? ` · ${m.phone}` : ""}
+        {m.birthDate ? ` · 🎂 ${cap(formatDayLabel(m.birthDate))}` : ""}
         {m.role === "admin" ? " · admin" : ""}
       </p>
+
+      {/* Health / intake info */}
+      {m.health || m.injuries || m.activityType || m.notes ? (
+        <div className="surface-card mt-6 rounded-2xl px-7 py-6 shadow-soft">
+          <h2 className="mb-3 font-serif text-xl text-ink">Ficha del miembro</h2>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            {m.health ? (
+              <Info label="Enfermedades / condiciones" value={m.health} />
+            ) : null}
+            {m.injuries ? <Info label="Lesiones" value={m.injuries} /> : null}
+            {m.activityType ? (
+              <Info label="Actividad física" value={m.activityType} />
+            ) : null}
+            {m.notes ? <Info label="Comentarios" value={m.notes} /> : null}
+          </dl>
+        </div>
+      ) : null}
 
       {/* Summary */}
       <div className="mt-8 grid gap-5 sm:grid-cols-3">

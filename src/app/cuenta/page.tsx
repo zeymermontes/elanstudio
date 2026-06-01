@@ -10,6 +10,7 @@ import {
   CancelBooking,
   CancelSubscription,
 } from "@/components/account-actions";
+import { OnboardingForm } from "@/components/onboarding-form";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
@@ -47,6 +48,17 @@ export default async function CuentaPage({
   if (!user) {
     const next = reservar ? `/cuenta?reservar=${reservar}` : "/cuenta";
     redirect(`/ingresar?next=${encodeURIComponent(next)}`);
+  }
+
+  // First visit: collect health/birthday info before showing the dashboard.
+  const { data: onboardingProfile } = await supabase
+    .from("profiles")
+    .select("full_name, onboarded")
+    .eq("id", user.id)
+    .single();
+  if (onboardingProfile && !onboardingProfile.onboarded) {
+    const fn = (onboardingProfile.full_name ?? "").split(" ")[0];
+    return <OnboardingForm firstName={fn} />;
   }
 
   const [{ data: profile }, { data: balance }, { data: bookings }, { data: sub }] =

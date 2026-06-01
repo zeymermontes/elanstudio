@@ -83,6 +83,11 @@ export type MemberDetail = {
   fullName: string;
   phone: string;
   role: string;
+  birthDate: string | null;
+  health: string;
+  injuries: string;
+  activityType: string;
+  notes: string;
   credits: number;
   subActive: boolean;
   subEnd: string | null;
@@ -111,7 +116,13 @@ export async function getMemberDetail(
 
   const [{ data: profile }, { data: balance }, { data: sub }, { data: rawBookings }] =
     await Promise.all([
-      admin.from("profiles").select("full_name, phone, role").eq("id", id).single(),
+      admin
+        .from("profiles")
+        .select(
+          "full_name, phone, role, birth_date, health_conditions, injuries, activity_type, notes",
+        )
+        .eq("id", id)
+        .single(),
       admin.rpc("credit_balance", { p_user: id }),
       admin
         .from("subscriptions")
@@ -166,6 +177,11 @@ export async function getMemberDetail(
     fullName: profile?.full_name ?? "",
     phone: profile?.phone ?? "",
     role: profile?.role ?? "member",
+    birthDate: profile?.birth_date ?? null,
+    health: profile?.health_conditions ?? "",
+    injuries: profile?.injuries ?? "",
+    activityType: profile?.activity_type ?? "",
+    notes: profile?.notes ?? "",
     credits: (balance as number | null) ?? 0,
     subActive,
     subEnd,
@@ -190,6 +206,116 @@ export type SessionRoster = {
   capacity: number;
   roster: RosterEntry[];
 };
+
+export type Birthday = {
+  id: string;
+  name: string;
+  daysUntil: number;
+  turningAge: number;
+  date: string; // ISO of the next birthday
+};
+
+/** Members whose birthday falls within the next `withinDays` days. */
+export async function getUpcomingBirthdays(
+  withinDays = 30,
+): Promise<Birthday[]> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return [];
+
+  const { data } = await admin
+    .from("profiles")
+    .select("id, full_name, birth_date")
+    .not("birth_date", "is", null);
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const out: Birthday[] = [];
+
+  for (const p of data ?? []) {
+    const [yy, mm, dd] = String(p.birth_date).split("-").map(Number);
+    if (!mm || !dd) continue;
+    let next = new Date(today.getFullYear(), mm - 1, dd);
+    if (next < today) next = new Date(today.getFullYear() + 1, mm - 1, dd);
+    const daysUntil = Math.round(
+      (next.getTime() - today.getTime()) / 86400000,
+    );
+    if (daysUntil > withinDays) continue;
+    out.push({
+      id: p.id,
+      name: p.full_name || "Miembro",
+      daysUntil,
+      turningAge: next.getFullYear() - yy,
+      date: next.toISOString(),
+    });
+  }
+  return out.sort((a, b) => a.daysUntil - b.daysUntil);
+}
+
+export type BirthdayBooking = {
+  name: string;
+  className: string;
+  startsAt: string;
+};
+
+/**
+ * Upcoming bookings that fall on the member's birthday — so the studio can
+ * prepare a detail/gift for them on the day.
+ */
+export async function getBirthdayBookings(
+  withinDays = 60,
+): Promise<BirthdayBooking[]> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return [];
+
+  const { data: bookings } = await admin
+    .from("bookings")
+    .select("user_id, class_sessions(starts_at, class_types(name))")
+    .eq("status", "confirmed");
+  if (!bookings?.length) return [];
+
+  const ids = [...new Set(bookings.map((b) => b.user_id))];
+  const { data: profs } = await admin
+    .from("profiles")
+    .select("id, full_name, birth_date")
+    .in("id", ids)
+    .not("birth_date", "is", null);
+
+  const bmap = new Map<string, { name: string; month: number; day: number }>();
+  for (const p of profs ?? []) {
+    const [, m, d] = String(p.birth_date).split("-").map(Number);
+    bmap.set(p.id, { name: p.full_name || "Miembro", month: m, day: d });
+  }
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const max = today.getTime() + withinDays * 86400000;
+  const out: BirthdayBooking[] = [];
+
+  for (const b of bookings) {
+    const bd = bmap.get(b.user_id);
+    if (!bd) continue;
+    const cs = (b as { class_sessions: unknown }).class_sessions as
+      | {
+          starts_at: string;
+          class_types: { name: string } | { name: string }[] | null;
+        }
+      | { starts_at: string; class_types: unknown }[]
+      | null;
+    const session = Array.isArray(cs) ? cs[0] : cs;
+    if (!session?.starts_at) continue;
+    const sd = new Date(session.starts_at);
+    const t = sd.getTime();
+    if (t < today.getTime() || t > max) continue;
+    if (sd.getMonth() + 1 === bd.month && sd.getDate() === bd.day) {
+      out.push({
+        name: bd.name,
+        className: firstName(session.class_types as never) || "Clase",
+        startsAt: session.starts_at,
+      });
+    }
+  }
+  return out.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
 
 /** Booked members for a session, for the check-in (attendance) screen. */
 export async function getSessionRoster(

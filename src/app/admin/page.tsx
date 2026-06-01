@@ -1,9 +1,16 @@
 import Link from "next/link";
-import { CalendarDays, Package, Users, CreditCard } from "lucide-react";
+import { CalendarDays, Package, Users, CreditCard, Cake, Gift } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { formatMxn } from "@/lib/format";
+import { getUpcomingBirthdays, getBirthdayBookings } from "@/lib/admin-data";
+import { formatMxn, formatDayLabel, formatTime, cap } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+function daysLabel(d: number) {
+  if (d === 0) return "¡Hoy!";
+  if (d === 1) return "Mañana";
+  return `En ${d} días`;
+}
 
 export default async function AdminDashboard() {
   const supabase = await createSupabaseServerClient();
@@ -39,9 +46,14 @@ export default async function AdminDashboard() {
     );
   }
 
+  const [birthdays, birthdayBookings] = await Promise.all([
+    getUpcomingBirthdays(30),
+    getBirthdayBookings(60),
+  ]);
+
   const stats = [
     { label: "Clases próximas", value: upcoming, icon: CalendarDays, href: "/admin/horario" },
-    { label: "Miembros", value: members, icon: Users, href: "/admin/reservas" },
+    { label: "Miembros", value: members, icon: Users, href: "/admin/usuarios" },
     { label: "Paquetes activos", value: pkgs, icon: Package, href: "/admin/paquetes" },
     { label: "Ingresos", value: formatMxn(revenue), icon: CreditCard, href: "/admin/pagos" },
   ];
@@ -82,6 +94,62 @@ export default async function AdminDashboard() {
             Editar marca
           </Link>
         </div>
+      </div>
+
+      {/* Birthday-in-class alerts */}
+      {birthdayBookings.length > 0 ? (
+        <div className="surface-card mt-8 rounded-2xl border-l-2 border-pink px-7 py-7 shadow-soft">
+          <h2 className="flex items-center gap-2 font-serif text-2xl text-ink">
+            <Gift size={18} strokeWidth={1.5} className="text-pink" /> Cumpleaños en clase
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Estas personas reservaron una clase el día de su cumpleaños —
+            prepárales un detalle. 🎁
+          </p>
+          <ul className="mt-4 space-y-2">
+            {birthdayBookings.map((b, i) => (
+              <li
+                key={i}
+                className="flex items-center justify-between rounded-xl bg-pink-soft/40 px-5 py-3 text-sm"
+              >
+                <span className="font-medium text-ink">{b.name}</span>
+                <span className="text-ink-soft">
+                  {b.className} · {cap(formatDayLabel(b.startsAt))} ·{" "}
+                  {formatTime(b.startsAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {/* Upcoming birthdays */}
+      <div className="surface-card mt-8 rounded-2xl px-7 py-7 shadow-soft">
+        <h2 className="flex items-center gap-2 font-serif text-2xl text-ink">
+          <Cake size={18} strokeWidth={1.5} className="text-gold" /> Próximos cumpleaños
+        </h2>
+        {birthdays.length === 0 ? (
+          <p className="mt-3 text-sm text-ink-soft">
+            No hay cumpleaños en los próximos 30 días.
+          </p>
+        ) : (
+          <ul className="mt-4 divide-y divide-line">
+            {birthdays.map((b) => (
+              <li key={b.id} className="flex items-center justify-between py-3">
+                <Link
+                  href={`/admin/usuarios/${b.id}`}
+                  className="text-sm text-ink hover:text-pink-strong"
+                >
+                  {b.name}
+                </Link>
+                <span className="text-sm text-ink-soft">
+                  {cap(formatDayLabel(b.date))} · cumple {b.turningAge} ·{" "}
+                  <span className="text-gold">{daysLabel(b.daysUntil)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
