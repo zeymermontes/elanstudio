@@ -30,7 +30,7 @@ export function Logo({
         className="h-9 w-auto sm:h-10"
       />
       <span className="flex flex-col">
-        <span className="font-serif text-2xl font-semibold tracking-[0.2em] text-pink-strong sm:text-[1.7rem]">
+        <span className="font-serif text-lg font-semibold tracking-[0.15em] text-pink-strong sm:text-xl">
           {name}
         </span>
         {tagline ? (

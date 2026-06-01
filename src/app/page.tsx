@@ -46,9 +46,6 @@ export default function Home() {
       <section className="relative overflow-hidden">
         <div className="mx-auto max-w-6xl px-5 pt-16 pb-20 sm:pt-24 sm:pb-28">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-5 text-[0.7rem] uppercase tracking-luxe text-gold">
-              Estudio boutique · Fitness & Pilates
-            </p>
             <Image
               src="/logo.png"
               alt={s.studioName}
