@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { reserveAction, cancelAction } from "@/lib/actions/booking";
 import { bookingMessage } from "@/lib/booking-messages";
+import { cancelSubscriptionAction } from "@/lib/actions/subscription";
 
 /** Confirmation card shown when arriving at /cuenta?reservar=<id>. */
 export function ConfirmReserve({
@@ -48,6 +49,43 @@ export function ConfirmReserve({
         </div>
       )}
     </div>
+  );
+}
+
+/** Cancel the monthly subscription (with confirmation). */
+export function CancelSubscription() {
+  const [pending, start] = useTransition();
+  const [done, setDone] = useState(false);
+  const router = useRouter();
+
+  function cancel() {
+    if (!confirm("¿Cancelar tu suscripción mensual? No se harán más cobros."))
+      return;
+    start(async () => {
+      const res = await cancelSubscriptionAction();
+      if (res.ok) {
+        setDone(true);
+        router.refresh();
+      }
+    });
+  }
+
+  if (done) {
+    return (
+      <span className="text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft">
+        Suscripción cancelada
+      </span>
+    );
+  }
+
+  return (
+    <button
+      onClick={cancel}
+      disabled={pending}
+      className="text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft transition-colors hover:text-pink-strong disabled:opacity-60"
+    >
+      {pending ? "Cancelando…" : "Cancelar suscripción"}
+    </button>
   );
 }
 

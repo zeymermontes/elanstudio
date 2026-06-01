@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
@@ -9,6 +10,7 @@ import {
 } from "@/lib/mercadopago";
 
 export type SubResult = { url?: string; error?: string };
+export type CancelResult = { ok: boolean; error?: string };
 
 /**
  * Starts a monthly subscription via Mercado Pago "preapproval". Creates a
@@ -89,4 +91,52 @@ export async function startSubscriptionAction(
       .eq("id", sub.id);
     return { error: "error" };
   }
+}
+
+/**
+ * Cancels the user's active subscription: tells Mercado Pago to cancel the
+ * preapproval (stops future charges) and marks it cancelled locally. The user
+ * keeps unlimited access until the current period ends.
+ */
+export async function cancelSubscriptionAction(): Promise<CancelResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "auth" };
+
+  const admin = createSupabaseAdminClient();
+  if (!admin || !isMercadoPagoConfigured()) {
+    return { ok: false, error: "not_configured" };
+  }
+
+  const { data: sub } = await admin
+    .from("subscriptions")
+    .select("id, mp_preapproval_id")
+    .eq("user_id", user.id)
+    .in("status", ["authorized", "paused"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!sub) return { ok: false, error: "not_found" };
+
+  if (sub.mp_preapproval_id) {
+    const res = await fetch(
+      `https://api.mercadopago.com/preapproval/${sub.mp_preapproval_id}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "cancelled" }),
+      },
+    );
+    if (!res.ok) return { ok: false, error: "error" };
+  }
+
+  await admin
+    .from("subscriptions")
+    .update({ status: "cancelled" })
+    .eq("id", sub.id);
+
+  revalidatePath("/cuenta");
+  return { ok: true };
 }

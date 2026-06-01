@@ -5,7 +5,11 @@ import { Sparkles, Calendar, ShoppingBag } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { signOutAction } from "@/lib/actions/auth";
-import { ConfirmReserve, CancelBooking } from "@/components/account-actions";
+import {
+  ConfirmReserve,
+  CancelBooking,
+  CancelSubscription,
+} from "@/components/account-actions";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
@@ -154,12 +158,16 @@ export default async function CuentaPage({
             </p>
           </div>
         </div>
-        <Link
-          href="/paquetes"
-          className="inline-flex items-center gap-2 rounded-full border border-gold/50 px-5 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-ink transition-colors hover:border-gold hover:text-pink-strong"
-        >
-          <ShoppingBag size={14} strokeWidth={1.5} /> Comprar paquete
-        </Link>
+        {subActive ? (
+          <CancelSubscription />
+        ) : (
+          <Link
+            href="/paquetes"
+            className="inline-flex items-center gap-2 rounded-full border border-gold/50 px-5 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-ink transition-colors hover:border-gold hover:text-pink-strong"
+          >
+            <ShoppingBag size={14} strokeWidth={1.5} /> Comprar paquete
+          </Link>
+        )}
       </div>
 
       {/* Upcoming bookings */}
