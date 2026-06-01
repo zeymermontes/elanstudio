@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Sparkles, HeartHandshake, Flower2 } from "lucide-react";
 import { defaultSettings as s } from "@/lib/site";
 
@@ -48,11 +49,14 @@ export default function Home() {
             <p className="mb-5 text-[0.7rem] uppercase tracking-luxe text-gold">
               Estudio boutique · Fitness & Pilates
             </p>
-            <h1 className="font-serif text-5xl font-light leading-[1.05] text-ink text-balance sm:text-7xl">
-              Mueve tu cuerpo con{" "}
-              <span className="font-semibold text-pink-strong italic">ÉLAN</span>
-            </h1>
-            <div className="gold-rule mx-auto my-8 w-40" />
+            <Image
+              src="/logo.png"
+              alt={s.studioName}
+              width={543}
+              height={434}
+              priority
+              className="mx-auto mb-6 h-auto w-72 sm:w-96"
+            />
             <p className="mx-auto max-w-xl text-base leading-relaxed text-ink-soft text-balance">
               Bienvenida a {s.studioName}. Un espacio sereno donde la fuerza se
               encuentra con la elegancia. Reserva tu clase, elige tu paquete y

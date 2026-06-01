@@ -23,7 +23,7 @@ export function SiteHeader({
   return (
     <header className="sticky top-0 z-50 border-b border-line/70 bg-cream">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-5 py-4">
-        <Logo name={studioName} className="!items-start" />
+        <Logo name={studioName} />
 
         <nav className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => {
