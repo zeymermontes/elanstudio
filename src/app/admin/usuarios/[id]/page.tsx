@@ -37,6 +37,7 @@ export default async function UsuarioDetailPage({
   const past = m.bookings.filter(
     (b) => b.startsAt && new Date(b.startsAt).getTime() < nowMs,
   );
+  const attendedCount = m.bookings.filter((b) => b.attended === true).length;
 
   return (
     <div>
@@ -67,9 +68,9 @@ export default async function UsuarioDetailPage({
         </div>
         <div className="surface-card rounded-2xl px-6 py-6 shadow-soft">
           <CalendarCheck size={20} strokeWidth={1.25} className="text-pink" />
-          <p className="mt-3 font-serif text-3xl text-ink">{past.length}</p>
+          <p className="mt-3 font-serif text-3xl text-ink">{attendedCount}</p>
           <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">
-            Asistencias
+            Asistencias confirmadas
           </p>
         </div>
         <div className="surface-card flex flex-col rounded-2xl px-6 py-6 shadow-soft">
@@ -136,10 +137,21 @@ export default async function UsuarioDetailPage({
             {past.slice(0, 30).map((b) => (
               <li
                 key={b.sessionId}
-                className="surface-card flex items-center justify-between rounded-xl px-5 py-3 text-sm shadow-soft"
+                className="surface-card flex items-center justify-between gap-3 rounded-xl px-5 py-3 text-sm shadow-soft"
               >
-                <span className="text-ink">{b.className}</span>
-                <span className="text-ink-soft">
+                <span className="flex items-center gap-2 text-ink">
+                  {b.className}
+                  {b.attended === true ? (
+                    <span className="rounded-full bg-gold-soft/50 px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-ink">
+                      Presente
+                    </span>
+                  ) : b.attended === false ? (
+                    <span className="rounded-full bg-pink-soft/60 px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-pink-strong">
+                      Ausente
+                    </span>
+                  ) : null}
+                </span>
+                <span className="shrink-0 text-ink-soft">
                   {b.startsAt
                     ? `${cap(formatDayLabel(b.startsAt))} · ${formatTime(b.startsAt)}`
                     : ""}

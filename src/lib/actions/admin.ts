@@ -320,3 +320,24 @@ export async function deleteSessionAction(id: string): Promise<FormState> {
   revalidatePath("/horarios");
   return { ok: true };
 }
+
+/**
+ * Mark a booked member's attendance for a session.
+ * value: true = present, false = no-show, null = clear.
+ */
+export async function setAttendanceAction(
+  sessionId: string,
+  userId: string,
+  value: boolean | null,
+): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  const { error } = await supabase
+    .from("bookings")
+    .update({ attended: value })
+    .eq("session_id", sessionId)
+    .eq("user_id", userId);
+  if (error) return { error: error.message };
+  revalidatePath(`/admin/horario/${sessionId}`);
+  return { ok: true };
+}

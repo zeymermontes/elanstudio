@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ClipboardCheck } from "lucide-react";
 import { getClassTypes, getCoaches, getLocations, getUpcomingSessions } from "@/lib/data";
 import { SessionForm } from "@/components/admin/session-form";
 import { DeleteButton } from "@/components/admin/delete-button";
@@ -49,11 +51,19 @@ export default async function AdminHorarioPage() {
                     {s.booked}/{s.capacity} reservas
                   </p>
                 </div>
-                <DeleteButton
-                  id={s.id}
-                  onDelete={deleteSessionAction}
-                  confirmText="¿Eliminar esta sesión?"
-                />
+                <div className="flex items-center gap-4">
+                  <Link
+                    href={`/admin/horario/${s.id}`}
+                    className="inline-flex items-center gap-1.5 text-[0.7rem] uppercase tracking-[0.12em] text-pink-strong transition-colors hover:text-ink"
+                  >
+                    <ClipboardCheck size={14} strokeWidth={1.5} /> Lista
+                  </Link>
+                  <DeleteButton
+                    id={s.id}
+                    onDelete={deleteSessionAction}
+                    confirmText="¿Eliminar esta sesión?"
+                  />
+                </div>
               </article>
             ))}
           </div>

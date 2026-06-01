@@ -74,6 +74,7 @@ export type MemberBooking = {
   startsAt: string | null;
   className: string;
   coach: string;
+  attended: boolean | null;
 };
 
 export type MemberDetail = {
@@ -118,7 +119,7 @@ export async function getMemberDetail(
       admin
         .from("bookings")
         .select(
-          "session_id, status, created_at, class_sessions(starts_at, class_types(name), coaches(name))",
+          "session_id, status, attended, created_at, class_sessions(starts_at, class_types(name), coaches(name))",
         )
         .eq("user_id", id)
         .eq("status", "confirmed")
@@ -139,6 +140,7 @@ export async function getMemberDetail(
   const bookings: MemberBooking[] = (
     (rawBookings ?? []) as unknown as {
       session_id: string;
+      attended: boolean | null;
       class_sessions: {
         starts_at: string;
         class_types: { name: string } | { name: string }[] | null;
@@ -150,6 +152,7 @@ export async function getMemberDetail(
     startsAt: b.class_sessions?.starts_at ?? null,
     className: firstName(b.class_sessions?.class_types ?? null) || "Clase",
     coach: firstName(b.class_sessions?.coaches ?? null),
+    attended: b.attended,
   }));
 
   return {
@@ -163,5 +166,89 @@ export async function getMemberDetail(
     subEnd,
     ledger: ledger ?? [],
     bookings,
+  };
+}
+
+export type RosterEntry = {
+  userId: string;
+  name: string;
+  email: string;
+  attended: boolean | null;
+};
+
+export type SessionRoster = {
+  id: string;
+  startsAt: string;
+  className: string;
+  coach: string;
+  location: string;
+  capacity: number;
+  roster: RosterEntry[];
+};
+
+/** Booked members for a session, for the check-in (attendance) screen. */
+export async function getSessionRoster(
+  sessionId: string,
+): Promise<SessionRoster | null> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return null;
+
+  const { data: session } = await admin
+    .from("class_sessions")
+    .select(
+      "starts_at, capacity, class_types(name), coaches(name), locations(name)",
+    )
+    .eq("id", sessionId)
+    .single();
+  if (!session) return null;
+
+  const { data: bookings } = await admin
+    .from("bookings")
+    .select("user_id, attended")
+    .eq("session_id", sessionId)
+    .eq("status", "confirmed");
+
+  const ids = (bookings ?? []).map((b) => b.user_id);
+  const names = new Map<string, string>();
+  if (ids.length) {
+    const { data: profs } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", ids);
+    for (const p of profs ?? []) names.set(p.id, p.full_name);
+  }
+  const { data: list } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+  const emails = new Map(
+    (list?.users ?? []).map((u) => [u.id, u.email ?? ""]),
+  );
+
+  const s = session as unknown as {
+    starts_at: string;
+    capacity: number;
+    class_types: { name: string } | { name: string }[] | null;
+    coaches: { name: string } | { name: string }[] | null;
+    locations: { name: string } | { name: string }[] | null;
+  };
+
+  const roster: RosterEntry[] = (bookings ?? [])
+    .map((b) => ({
+      userId: b.user_id,
+      name: names.get(b.user_id) ?? "",
+      email: emails.get(b.user_id) ?? "",
+      attended: b.attended as boolean | null,
+    }))
+    .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+
+  return {
+    id: sessionId,
+    startsAt: s.starts_at,
+    className: firstName(s.class_types) || "Clase",
+    coach: firstName(s.coaches),
+    location: firstName(s.locations),
+    capacity: s.capacity,
+    roster,
   };
 }
