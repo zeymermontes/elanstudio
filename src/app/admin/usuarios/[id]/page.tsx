@@ -173,29 +173,41 @@ export default async function UsuarioDetailPage({
           <div className="surface-card overflow-hidden rounded-2xl shadow-soft">
             <table className="w-full text-left text-sm">
               <tbody>
-                {m.ledger.map((l, i) => (
-                  <tr key={i} className="border-b border-line/60 last:border-0">
-                    <td className="px-5 py-3 text-ink-soft">
-                      {REASONS[l.reason] ?? l.reason}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={
-                          l.delta > 0
-                            ? "text-gold"
-                            : l.delta < 0
-                              ? "text-pink-strong"
-                              : "text-ink-soft"
-                        }
-                      >
-                        {l.delta > 0 ? `+${l.delta}` : l.delta}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-right text-xs text-ink-soft">
-                      {cap(formatDayLabel(l.created_at))}
-                    </td>
-                  </tr>
-                ))}
+                {m.ledger.map((l, i) => {
+                  const expired =
+                    l.expires_at && new Date(l.expires_at).getTime() < nowMs;
+                  return (
+                    <tr key={i} className="border-b border-line/60 last:border-0">
+                      <td className="px-5 py-3 text-ink-soft">
+                        {REASONS[l.reason] ?? l.reason}
+                        {l.delta > 0 && l.expires_at ? (
+                          <span
+                            className={`ml-2 text-xs ${expired ? "text-pink-strong" : "text-ink-soft"}`}
+                          >
+                            {expired ? "venció " : "vence "}
+                            {cap(formatDayLabel(l.expires_at))}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={
+                            l.delta > 0
+                              ? "text-gold"
+                              : l.delta < 0
+                                ? "text-pink-strong"
+                                : "text-ink-soft"
+                          }
+                        >
+                          {l.delta > 0 ? `+${l.delta}` : l.delta}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right text-xs text-ink-soft">
+                        {cap(formatDayLabel(l.created_at))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

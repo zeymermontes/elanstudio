@@ -42,10 +42,18 @@ export async function adjustCreditsAction(
   const delta = sign * amount;
   if (!userId || !amount) return { error: "Indica una cantidad válida." };
 
+  // Optional expiry (yyyy-mm-dd from a date input) — only when adding credits.
+  const expiresStr = str(fd, "expires_at");
+  const expires_at =
+    sign > 0 && expiresStr
+      ? new Date(`${expiresStr}T23:59:59`).toISOString()
+      : null;
+
   const { error } = await admin.from("credit_ledger").insert({
     user_id: userId,
     delta,
     reason: "manual",
+    expires_at,
   });
   if (error) return { error: error.message };
 

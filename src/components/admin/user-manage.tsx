@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   adjustCreditsAction,
@@ -10,12 +10,40 @@ import {
 import type { FormState } from "@/lib/actions/admin";
 import { Field, StatusBanner, SaveButton, inputClass } from "./form-ui";
 
-/** Add or remove credits for a member. */
+/** Add or remove credits for a member, with optional expiry. */
 export function AdjustCreditsForm({ userId }: { userId: string }) {
   const [state, action] = useActionState<FormState, FormData>(
     adjustCreditsAction,
     null,
   );
+  const [sign, setSign] = useState("add");
+  const [expiry, setExpiry] = useState(""); // yyyy-mm-dd ("" = sin vencimiento)
+  const [quick, setQuick] = useState<string>("none");
+
+  function inDays(n: number) {
+    // Called only from click handlers, never during render.
+    // eslint-disable-next-line react-hooks/purity
+    return new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  }
+  function pickDays(n: number, key: string) {
+    setExpiry(inDays(n));
+    setQuick(key);
+  }
+
+  const quickBtn = (key: string, label: string, onClick: () => void) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-3.5 py-1.5 text-[0.7rem] uppercase tracking-[0.12em] transition-colors ${
+        quick === key
+          ? "bg-pink text-white"
+          : "border border-line text-ink-soft hover:text-ink"
+      }`}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <form action={action} className="surface-card rounded-2xl px-6 py-6 shadow-soft">
       <input type="hidden" name="user_id" value={userId} />
@@ -24,7 +52,12 @@ export function AdjustCreditsForm({ userId }: { userId: string }) {
         <StatusBanner state={state} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Acción">
-            <select name="sign" defaultValue="add" className={inputClass}>
+            <select
+              name="sign"
+              value={sign}
+              onChange={(e) => setSign(e.target.value)}
+              className={inputClass}
+            >
               <option value="add">Agregar</option>
               <option value="remove">Quitar</option>
             </select>
@@ -33,6 +66,39 @@ export function AdjustCreditsForm({ userId }: { userId: string }) {
             <input name="amount" type="number" min={1} defaultValue={1} className={inputClass} />
           </Field>
         </div>
+
+        {sign === "add" ? (
+          <div>
+            <span className="mb-1.5 block text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft">
+              Vigencia
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {quickBtn("7", "7 días", () => pickDays(7, "7"))}
+              {quickBtn("15", "15 días", () => pickDays(15, "15"))}
+              {quickBtn("30", "30 días", () => pickDays(30, "30"))}
+              {quickBtn("none", "Sin vencimiento", () => {
+                setExpiry("");
+                setQuick("none");
+              })}
+            </div>
+            <div className="mt-3">
+              <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.12em] text-ink-soft">
+                O fecha específica
+              </span>
+              <input
+                type="date"
+                name="expires_at"
+                value={expiry}
+                onChange={(e) => {
+                  setExpiry(e.target.value);
+                  setQuick(e.target.value ? "custom" : "none");
+                }}
+                className={inputClass}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex justify-end">
           <SaveButton label="Aplicar" />
         </div>

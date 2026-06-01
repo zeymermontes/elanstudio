@@ -86,7 +86,12 @@ export type MemberDetail = {
   credits: number;
   subActive: boolean;
   subEnd: string | null;
-  ledger: { delta: number; reason: string; created_at: string }[];
+  ledger: {
+    delta: number;
+    reason: string;
+    created_at: string;
+    expires_at: string | null;
+  }[];
   bookings: MemberBooking[];
 };
 
@@ -128,7 +133,7 @@ export async function getMemberDetail(
 
   const { data: ledger } = await admin
     .from("credit_ledger")
-    .select("delta, reason, created_at")
+    .select("delta, reason, created_at, expires_at")
     .eq("user_id", id)
     .order("created_at", { ascending: false })
     .limit(40);
