@@ -11,6 +11,9 @@ const eslintConfig = defineConfig([
       // (avoids next/font's build-time network fetch). This rule targets the
       // pages router and is a false positive here.
       "@next/next/no-page-custom-font": "off",
+      // Card images come from arbitrary admin-provided URLs; plain <img> avoids
+      // per-domain next/image config.
+      "@next/next/no-img-element": "off",
     },
   },
   // Override default ignores of eslint-config-next.

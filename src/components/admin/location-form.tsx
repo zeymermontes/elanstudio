@@ -35,6 +35,22 @@ export function LocationForm({ location }: { location?: Location }) {
         <Field label="Horario">
           <input name="hours" defaultValue={location?.hours} className={inputClass} placeholder="Lun–Vie 7:00–20:00" />
         </Field>
+        <Field label="Enlace de Google Maps (opcional)">
+          <input
+            name="map_url"
+            defaultValue={location?.mapUrl ?? ""}
+            placeholder="https://maps.google.com/…"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="URL de imagen (opcional)">
+          <input
+            name="image_url"
+            defaultValue={location?.imageUrl ?? ""}
+            placeholder="https://…"
+            className={inputClass}
+          />
+        </Field>
         <div className="flex items-center justify-end gap-4">
           {location ? (
             <DeleteButton id={location.id} onDelete={deleteLocationAction} confirmText="¿Eliminar esta ubicación?" />

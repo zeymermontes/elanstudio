@@ -22,14 +22,22 @@ export default async function CoachesPage() {
             key={coach.id}
             className="surface-card overflow-hidden rounded-2xl text-center shadow-soft"
           >
-            <div className="flex h-64 items-center justify-center bg-gradient-to-br from-pink-soft to-cream">
-              <span className="font-serif text-5xl italic text-pink-strong/50">
-                {coach.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
-              </span>
-            </div>
+            {coach.photoUrl ? (
+              <img
+                src={coach.photoUrl}
+                alt={coach.name}
+                className="h-64 w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-64 items-center justify-center bg-gradient-to-br from-pink-soft to-cream">
+                <span className="font-serif text-5xl italic text-pink-strong/50">
+                  {coach.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
+                </span>
+              </div>
+            )}
             <div className="px-6 py-7">
               <h3 className="font-serif text-2xl text-ink">{coach.name}</h3>
               <p className="mt-1 text-[0.7rem] uppercase tracking-[0.15em] text-gold">

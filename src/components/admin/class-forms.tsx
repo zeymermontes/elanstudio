@@ -98,6 +98,14 @@ export function ClassTypeForm({
             <input name="default_capacity" type="number" min={1} defaultValue={classType?.defaultCapacity ?? 10} className={inputClass} />
           </Field>
         </div>
+        <Field label="URL de imagen (opcional)">
+          <input
+            name="image_url"
+            defaultValue={classType?.imageUrl ?? ""}
+            placeholder="https://…"
+            className={inputClass}
+          />
+        </Field>
         <div className="flex items-center justify-end gap-4">
           {classType ? (
             <DeleteButton

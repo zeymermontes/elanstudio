@@ -101,6 +101,7 @@ export async function getLocations(): Promise<Location[]> {
     city: l.city ?? "",
     hours: l.hours ?? "",
     mapUrl: l.map_url ?? null,
+    imageUrl: l.image_url ?? null,
   }));
 }
 

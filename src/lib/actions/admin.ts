@@ -124,6 +124,7 @@ export async function saveCoachAction(
       .map((s) => s.trim())
       .filter(Boolean),
     instagram: str(fd, "instagram"),
+    photo_url: str(fd, "photo_url") || null,
   };
 
   const { error } = id
@@ -162,6 +163,8 @@ export async function saveLocationAction(
     address: str(fd, "address"),
     city: str(fd, "city"),
     hours: str(fd, "hours"),
+    map_url: str(fd, "map_url") || null,
+    image_url: str(fd, "image_url") || null,
   };
 
   const { error } = id
@@ -241,6 +244,7 @@ export async function saveClassTypeAction(
     duration_min: num(fd, "duration_min") || 50,
     level: str(fd, "level") || "Todos los niveles",
     default_capacity: num(fd, "default_capacity") || 10,
+    image_url: str(fd, "image_url") || null,
   };
 
   const { error } = id

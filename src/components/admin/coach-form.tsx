@@ -45,6 +45,14 @@ export function CoachForm({ coach }: { coach?: Coach }) {
             <input name="instagram" defaultValue={coach?.instagram ?? ""} className={inputClass} />
           </Field>
         </div>
+        <Field label="URL de foto (opcional)">
+          <input
+            name="photo_url"
+            defaultValue={coach?.photoUrl ?? ""}
+            placeholder="https://…"
+            className={inputClass}
+          />
+        </Field>
         <div className="flex items-center justify-end gap-4">
           {coach ? (
             <DeleteButton id={coach.id} onDelete={deleteCoachAction} confirmText="¿Eliminar este coach?" />

@@ -40,11 +40,19 @@ export default async function ClasesPage() {
                     key={c.id}
                     className="surface-card flex flex-col overflow-hidden rounded-2xl shadow-soft sm:flex-row"
                   >
-                    <div className="flex min-h-[8rem] items-center justify-center bg-gradient-to-br from-pink-soft to-cream px-8 sm:w-2/5">
-                      <span className="font-serif text-2xl italic text-pink-strong/70">
-                        {c.name}
-                      </span>
-                    </div>
+                    {c.imageUrl ? (
+                      <img
+                        src={c.imageUrl}
+                        alt={c.name}
+                        className="min-h-[8rem] w-full object-cover sm:w-2/5"
+                      />
+                    ) : (
+                      <div className="flex min-h-[8rem] items-center justify-center bg-gradient-to-br from-pink-soft to-cream px-8 sm:w-2/5">
+                        <span className="font-serif text-2xl italic text-pink-strong/70">
+                          {c.name}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex-1 px-6 py-6">
                       <h3 className="font-serif text-2xl text-ink">{c.name}</h3>
                       <p className="mt-2 text-sm leading-relaxed text-ink-soft">

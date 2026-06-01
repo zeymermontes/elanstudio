@@ -39,6 +39,7 @@ export type Location = {
   city: string;
   hours: string;
   mapUrl: string | null;
+  imageUrl: string | null;
 };
 
 export type Package = {

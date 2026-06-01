@@ -122,6 +122,7 @@ export const locations: Location[] = [
     city: "Ciudad de México",
     hours: "Lun–Vie 6:00–21:00 · Sáb 8:00–14:00",
     mapUrl: null,
+    imageUrl: null,
   },
   {
     id: "loc-condesa",
@@ -130,6 +131,7 @@ export const locations: Location[] = [
     city: "Ciudad de México",
     hours: "Lun–Vie 7:00–20:00 · Sáb 9:00–13:00",
     mapUrl: null,
+    imageUrl: null,
   },
 ];
 
