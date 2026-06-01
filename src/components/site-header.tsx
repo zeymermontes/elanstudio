@@ -3,14 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, User } from "lucide-react";
+import { Menu, X, User, LayoutDashboard } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { navLinks, defaultSettings } from "@/lib/site";
 
 export function SiteHeader({
   studioName = defaultSettings.studioName,
+  isAdmin = false,
 }: {
   studioName?: string;
+  isAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -41,6 +43,15 @@ export function SiteHeader({
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
+          {isAdmin ? (
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-2 rounded-full border border-gold/50 px-4 py-2 text-[0.8rem] uppercase tracking-[0.18em] text-gold transition-colors hover:border-gold hover:bg-gold-soft/30"
+            >
+              <LayoutDashboard size={15} strokeWidth={1.5} />
+              Admin
+            </Link>
+          ) : null}
           <Link
             href="/cuenta"
             className="inline-flex items-center gap-2 text-[0.8rem] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-pink-strong"
@@ -79,6 +90,16 @@ export function SiteHeader({
                 {link.label}
               </Link>
             ))}
+            {isAdmin ? (
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="inline-flex items-center gap-2 text-sm uppercase tracking-[0.18em] text-gold"
+              >
+                <LayoutDashboard size={15} strokeWidth={1.5} />
+                Admin
+              </Link>
+            ) : null}
             <Link
               href="/cuenta"
               onClick={() => setOpen(false)}
