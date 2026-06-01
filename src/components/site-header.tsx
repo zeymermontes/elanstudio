@@ -25,7 +25,7 @@ export function SiteHeader({
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-5 py-4">
         <Logo name={studioName} />
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-6 lg:flex">
           {navLinks.map((link) => {
             const active = pathname === link.href;
             return (
@@ -42,7 +42,7 @@ export function SiteHeader({
           })}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           {isAdmin ? (
             <Link
               href="/admin"
@@ -70,7 +70,7 @@ export function SiteHeader({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="text-ink md:hidden"
+          className="text-ink lg:hidden"
           aria-label="Menú"
         >
           {open ? <X size={24} strokeWidth={1.5} /> : <Menu size={24} strokeWidth={1.5} />}
@@ -78,7 +78,7 @@ export function SiteHeader({
       </div>
 
       {open ? (
-        <div className="border-t border-line bg-cream/95 px-5 py-4 md:hidden">
+        <div className="border-t border-line bg-cream/95 px-5 py-4 lg:hidden">
           <nav className="flex flex-col gap-3">
             {navLinks.map((link) => (
               <Link
