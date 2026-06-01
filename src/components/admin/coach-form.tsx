@@ -9,6 +9,7 @@ import {
 import type { Coach } from "@/lib/types";
 import { Field, StatusBanner, SaveButton, inputClass } from "./form-ui";
 import { DeleteButton } from "./delete-button";
+import { ImageUploadField } from "./image-upload";
 
 export function CoachForm({ coach }: { coach?: Coach }) {
   const [state, action] = useActionState<FormState, FormData>(
@@ -45,14 +46,12 @@ export function CoachForm({ coach }: { coach?: Coach }) {
             <input name="instagram" defaultValue={coach?.instagram ?? ""} className={inputClass} />
           </Field>
         </div>
-        <Field label="URL de foto (opcional)">
-          <input
-            name="photo_url"
-            defaultValue={coach?.photoUrl ?? ""}
-            placeholder="https://…"
-            className={inputClass}
-          />
-        </Field>
+        <ImageUploadField
+          name="photo_url"
+          label="Foto (opcional)"
+          folder="coaches"
+          defaultValue={coach?.photoUrl ?? ""}
+        />
         <div className="flex items-center justify-end gap-4">
           {coach ? (
             <DeleteButton id={coach.id} onDelete={deleteCoachAction} confirmText="¿Eliminar este coach?" />

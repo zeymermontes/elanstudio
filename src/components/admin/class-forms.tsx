@@ -11,6 +11,7 @@ import {
 import type { Service, ClassType } from "@/lib/types";
 import { Field, StatusBanner, SaveButton, inputClass } from "./form-ui";
 import { DeleteButton } from "./delete-button";
+import { ImageUploadField } from "./image-upload";
 
 const LEVELS = [
   "Todos los niveles",
@@ -98,14 +99,12 @@ export function ClassTypeForm({
             <input name="default_capacity" type="number" min={1} defaultValue={classType?.defaultCapacity ?? 10} className={inputClass} />
           </Field>
         </div>
-        <Field label="URL de imagen (opcional)">
-          <input
-            name="image_url"
-            defaultValue={classType?.imageUrl ?? ""}
-            placeholder="https://…"
-            className={inputClass}
-          />
-        </Field>
+        <ImageUploadField
+          name="image_url"
+          label="Imagen de la clase (opcional)"
+          folder="classes"
+          defaultValue={classType?.imageUrl ?? ""}
+        />
         <div className="flex items-center justify-end gap-4">
           {classType ? (
             <DeleteButton

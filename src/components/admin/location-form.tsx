@@ -9,6 +9,7 @@ import {
 import type { Location } from "@/lib/types";
 import { Field, StatusBanner, SaveButton, inputClass } from "./form-ui";
 import { DeleteButton } from "./delete-button";
+import { ImageUploadField } from "./image-upload";
 
 export function LocationForm({ location }: { location?: Location }) {
   const [state, action] = useActionState<FormState, FormData>(
@@ -43,14 +44,12 @@ export function LocationForm({ location }: { location?: Location }) {
             className={inputClass}
           />
         </Field>
-        <Field label="URL de imagen (opcional)">
-          <input
-            name="image_url"
-            defaultValue={location?.imageUrl ?? ""}
-            placeholder="https://…"
-            className={inputClass}
-          />
-        </Field>
+        <ImageUploadField
+          name="image_url"
+          label="Imagen del estudio (opcional)"
+          folder="locations"
+          defaultValue={location?.imageUrl ?? ""}
+        />
         <div className="flex items-center justify-end gap-4">
           {location ? (
             <DeleteButton id={location.id} onDelete={deleteLocationAction} confirmText="¿Eliminar esta ubicación?" />
