@@ -12,11 +12,6 @@ const nextConfig: NextConfig = {
   },
   // Used by webpack/build file tracing — also scope it to this project.
   outputFileTracingRoot: projectRoot,
-  images: {
-    // The brand logo is an SVG served via next/image.
-    dangerouslyAllowSVG: true,
-    contentDispositionType: "attachment",
-  },
 };
 
 export default nextConfig;

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, Sparkles, HeartHandshake, Flower2 } from "lucide-react";
 import { defaultSettings as s } from "@/lib/site";
 
@@ -46,12 +45,11 @@ export default function Home() {
       <section className="relative overflow-hidden">
         <div className="mx-auto max-w-6xl px-5 pt-16 pb-20 sm:pt-24 sm:pb-28">
           <div className="mx-auto max-w-3xl text-center">
-            <Image
+            <img
               src="/logo.png"
               alt={s.studioName}
               width={540}
               height={434}
-              priority
               className="mx-auto mb-6 h-auto w-72 sm:w-96"
             />
             <p className="mx-auto max-w-xl text-base leading-relaxed text-ink-soft text-balance">

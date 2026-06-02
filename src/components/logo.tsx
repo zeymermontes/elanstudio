@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { defaultSettings } from "@/lib/site";
 
 /**
@@ -21,12 +20,11 @@ export function Logo({
       className={`group inline-flex items-center gap-2.5 leading-none ${className}`}
       aria-label={name}
     >
-      <Image
+      <img
         src="/isotipo.png"
         alt=""
         width={340}
         height={300}
-        priority
         className="h-9 w-auto sm:h-10"
       />
       <span className="flex flex-col">
