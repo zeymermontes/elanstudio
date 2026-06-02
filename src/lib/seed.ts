@@ -16,10 +16,10 @@ import type {
 export const services: Service[] = [
   {
     id: "svc-reformer",
-    name: "Reformer Pilates",
+    name: "Reformer",
     slug: "reformer",
     description:
-      "Pilates en máquina reformer: fuerza, control y precisión con bajo impacto.",
+      "Entrenamiento en máquina reformer: fuerza, control y precisión con bajo impacto.",
     order: 1,
   },
   {
@@ -35,7 +35,7 @@ export const services: Service[] = [
     name: "Mat & Flow",
     slug: "mat",
     description:
-      "Pilates en colchoneta, movilidad y respiración consciente para todos los niveles.",
+      "Movilidad, estiramiento y respiración consciente para todos los niveles.",
     order: 3,
   },
 ];
@@ -76,7 +76,7 @@ export const classTypes: ClassType[] = [
     id: "ct-mat-flow",
     serviceId: "svc-mat",
     name: "Mat & Flow",
-    description: "Pilates en colchoneta con foco en core y movilidad.",
+    description: "Trabajo de core, movilidad y respiración.",
     durationMin: 50,
     level: "Principiante",
     defaultCapacity: 14,
@@ -108,7 +108,7 @@ export const coaches: Coach[] = [
     name: "Renata Solís",
     role: "Coach · Mat & Flow",
     bio: "Especialista en movilidad y respiración. Acompaña a principiantes con calidez y paciencia.",
-    specialties: ["Mat Pilates", "Movilidad", "Respiración"],
+    specialties: ["Mat & Flow", "Movilidad", "Respiración"],
     photoUrl: null,
     instagram: "renata.elan",
   },

@@ -4,8 +4,8 @@ import { defaultSettings as s } from "@/lib/site";
 
 const featuredClasses = [
   {
-    name: "Reformer Pilates",
-    desc: "Fuerza y control en máquina reformer. Tonifica con elegancia.",
+    name: "Fuerza & Tono",
+    desc: "Entrenamiento de fuerza para tonificar con elegancia y bajo impacto.",
     duration: "50 min",
   },
   {
@@ -14,8 +14,8 @@ const featuredClasses = [
     duration: "45 min",
   },
   {
-    name: "Mat & Flow",
-    desc: "Pilates en colchoneta y movilidad consciente para todos los niveles.",
+    name: "Movilidad & Flow",
+    desc: "Movilidad y respiración consciente para todos los niveles.",
     duration: "50 min",
   },
 ];

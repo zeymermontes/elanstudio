@@ -6,13 +6,31 @@ import { getProfile } from "@/lib/auth";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: `${defaultSettings.studioName} · Estudio Boutique`,
     template: `%s · ${defaultSettings.studioName}`,
   },
   description:
-    "Estudio boutique de fitness y pilates. Reserva tus clases, descubre nuestros paquetes, coaches y ubicaciones.",
+    "Estudio boutique de fitness. Reserva tus clases, descubre nuestros paquetes, coaches y ubicaciones.",
+  openGraph: {
+    type: "website",
+    siteName: defaultSettings.studioName,
+    title: `${defaultSettings.studioName} · Estudio Boutique`,
+    description:
+      "Estudio boutique de fitness. Reserva tus clases, descubre nuestros paquetes, coaches y ubicaciones.",
+    locale: "es_MX",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${defaultSettings.studioName} · Estudio Boutique`,
+    description:
+      "Estudio boutique de fitness. Reserva tus clases y descubre nuestros paquetes.",
+  },
 };
 
 export default async function RootLayout({

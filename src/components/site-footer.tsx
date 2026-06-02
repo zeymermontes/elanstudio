@@ -16,8 +16,7 @@ export function SiteFooter({
             {s.studioName}
           </p>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-soft">
-            Estudio boutique de fitness y pilates. Un espacio sereno, diseñado
-            para ti.
+            Estudio boutique de fitness. Un espacio sereno, diseñado para ti.
           </p>
         </div>
 

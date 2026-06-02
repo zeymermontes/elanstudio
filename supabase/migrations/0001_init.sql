@@ -329,9 +329,9 @@ insert into public.site_settings (id) values (1) on conflict (id) do nothing;
 
 insert into public.services (name, slug, description, "order")
 select * from (values
-  ('Reformer Pilates','reformer','Pilates en máquina reformer: fuerza, control y precisión con bajo impacto.',1),
+  ('Reformer','reformer','Entrenamiento en máquina reformer: fuerza, control y precisión con bajo impacto.',1),
   ('Barre','barre','Técnica inspirada en el ballet para tonificar, alargar y mejorar la postura.',2),
-  ('Mat & Flow','mat','Pilates en colchoneta, movilidad y respiración consciente para todos los niveles.',3)
+  ('Mat & Flow','mat','Movilidad, estiramiento y respiración consciente para todos los niveles.',3)
 ) v(name,slug,description,ord)
 where not exists (select 1 from public.services);
 
@@ -339,7 +339,7 @@ insert into public.coaches (name, role, bio, specialties, instagram)
 select * from (values
   ('Valentina Ríos','Fundadora · Reformer','Instructora certificada con más de 10 años guiando a mujeres hacia una práctica fuerte y consciente.', array['Reformer','Rehabilitación','Pre/Postnatal'],'valentina.elan'),
   ('Camila Duarte','Co-fundadora · Barre','Bailarina profesional convertida en coach. Su clase de Barre es pura elegancia y disciplina.', array['Barre','Flexibilidad','Postura'],'camila.elan'),
-  ('Renata Solís','Coach · Mat & Flow','Especialista en movilidad y respiración. Acompaña a principiantes con calidez y paciencia.', array['Mat Pilates','Movilidad','Respiración'],'renata.elan')
+  ('Renata Solís','Coach · Mat & Flow','Especialista en movilidad y respiración. Acompaña a principiantes con calidez y paciencia.', array['Mat & Flow','Movilidad','Respiración'],'renata.elan')
 ) v(name,role,bio,specialties,instagram)
 where not exists (select 1 from public.coaches);
 
@@ -366,7 +366,7 @@ from (values
   ('reformer','Reformer Flow','Secuencias fluidas en reformer que combinan fuerza y estiramiento.',50,'Todos los niveles',8),
   ('reformer','Reformer Sculpt','Trabajo de tonificación profunda con resistencia progresiva.',50,'Intermedio',8),
   ('barre','Barre Sculpt','Movimientos isométricos de ballet para esculpir y alargar.',45,'Todos los niveles',12),
-  ('mat','Mat & Flow','Pilates en colchoneta con foco en core y movilidad.',50,'Principiante',14)
+  ('mat','Mat & Flow','Trabajo de core, movilidad y respiración.',50,'Principiante',14)
 ) v(slug,name,description,duration_min,level,cap)
 join public.services s on s.slug = v.slug
 where not exists (select 1 from public.class_types);
