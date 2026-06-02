@@ -1,2 +1,11 @@
-// Reuse the Open Graph image for Twitter/X cards.
-export { default, runtime, alt, size, contentType } from "./opengraph-image";
+import { renderOgImage } from "@/lib/og-image";
+
+// Twitter/X card image. Config must be literals in this file (not re-exported).
+export const runtime = "nodejs";
+export const alt = "ÉLANSTUDIO — Estudio boutique";
+export const size = { width: 1200, height: 630 };
+export const contentType = "image/png";
+
+export default function Image() {
+  return renderOgImage();
+}
