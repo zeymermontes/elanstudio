@@ -119,6 +119,14 @@ function Modal({
           ) : null}
         </div>
 
+        {slot.classType.imageUrl ? (
+          <img
+            src={slot.classType.imageUrl}
+            alt={slot.classType.name}
+            className="mt-5 h-44 w-full rounded-2xl bg-cream object-cover"
+          />
+        ) : null}
+
         {slot.classType.description ? (
           <p className="mt-5 text-sm leading-relaxed text-ink-soft">
             {slot.classType.description}
