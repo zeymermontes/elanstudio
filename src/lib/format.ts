@@ -30,3 +30,12 @@ export function formatTime(iso: string): string {
 export function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+/** Short tab label like "Lun 8". */
+export function formatTabDay(iso: string): string {
+  const d = new Date(iso);
+  const wd = new Intl.DateTimeFormat("es-MX", { weekday: "short" })
+    .format(d)
+    .replace(".", "");
+  return `${cap(wd)} ${d.getDate()}`;
+}
