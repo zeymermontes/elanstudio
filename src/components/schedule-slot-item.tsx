@@ -123,7 +123,7 @@ function Modal({
           <img
             src={slot.classType.imageUrl}
             alt={slot.classType.name}
-            className="mt-5 h-44 w-full rounded-2xl bg-cream object-cover"
+            className="mt-5 max-h-56 w-full rounded-2xl bg-cream object-contain"
           />
         ) : null}
 
