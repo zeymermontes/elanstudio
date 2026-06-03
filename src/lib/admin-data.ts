@@ -332,6 +332,97 @@ export async function getBirthdayBookings(
   return out.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 
+export type ReservationSession = {
+  sessionId: string;
+  className: string;
+  startsAt: string;
+  endsAt: string;
+  coach: string;
+  location: string;
+  members: { name: string; attended: boolean | null }[];
+};
+
+type RelName = { name: string } | { name: string }[] | null;
+
+/**
+ * Reservations grouped by class session, within a window around now. Only
+ * sessions that have at least one confirmed reservation are returned.
+ */
+export async function getReservationsBySession(
+  fromDays = -45,
+  toDays = 60,
+): Promise<ReservationSession[]> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return [];
+
+  const now = Date.now();
+  const from = new Date(now + fromDays * 86400000).toISOString();
+  const to = new Date(now + toDays * 86400000).toISOString();
+
+  const { data: sessions } = await admin
+    .from("class_sessions")
+    .select(
+      "id, starts_at, ends_at, class_types(name), coaches(name), locations(name)",
+    )
+    .eq("status", "scheduled")
+    .gte("starts_at", from)
+    .lte("starts_at", to)
+    .order("starts_at", { ascending: true });
+  if (!sessions?.length) return [];
+
+  const ids = sessions.map((s) => s.id);
+  const { data: bookings } = await admin
+    .from("bookings")
+    .select("session_id, user_id, attended")
+    .eq("status", "confirmed")
+    .in("session_id", ids);
+
+  const userIds = [...new Set((bookings ?? []).map((b) => b.user_id))];
+  const names = new Map<string, string>();
+  if (userIds.length) {
+    const { data: profs } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", userIds);
+    for (const p of profs ?? []) names.set(p.id, p.full_name);
+  }
+
+  const bySession = new Map<
+    string,
+    { name: string; attended: boolean | null }[]
+  >();
+  for (const b of bookings ?? []) {
+    const arr = bySession.get(b.session_id) ?? [];
+    arr.push({
+      name: names.get(b.user_id) || "Miembro",
+      attended: b.attended as boolean | null,
+    });
+    bySession.set(b.session_id, arr);
+  }
+
+  return sessions
+    .map((s) => {
+      const sx = s as unknown as {
+        id: string;
+        starts_at: string;
+        ends_at: string;
+        class_types: RelName;
+        coaches: RelName;
+        locations: RelName;
+      };
+      return {
+        sessionId: sx.id,
+        className: firstName(sx.class_types) || "Clase",
+        startsAt: sx.starts_at,
+        endsAt: sx.ends_at,
+        coach: firstName(sx.coaches),
+        location: firstName(sx.locations),
+        members: bySession.get(sx.id) ?? [],
+      };
+    })
+    .filter((s) => s.members.length > 0);
+}
+
 /** Booked members for a session, for the check-in (attendance) screen. */
 export async function getSessionRoster(
   sessionId: string,
