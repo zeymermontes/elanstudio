@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Sparkles, HeartHandshake, Flower2 } from "lucide-react";
 import { defaultSettings as s } from "@/lib/site";
 import { getClassTypes } from "@/lib/data";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const values = [
   {
@@ -25,6 +26,45 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const featuredClasses = (await getClassTypes()).slice(0, 3);
+
+  // Dynamic closing CTA based on the visitor's state.
+  let cta = {
+    eyebrow: "Primera vez",
+    title: "Tu primera clase te está esperando",
+    subtitle: "Crea tu cuenta, compra un paquete y reserva tu lugar en segundos.",
+    label: "Crear mi cuenta",
+    href: "/registro",
+  };
+  const supabase = await createSupabaseServerClient();
+  if (supabase) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { count } = await supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "confirmed");
+      cta =
+        (count ?? 0) > 0
+          ? {
+              eyebrow: "Te esperamos",
+              title: "Reserva tu siguiente clase",
+              subtitle: "Sigue tu ritmo. Tu próxima clase está a solo un toque.",
+              label: "Ver horarios",
+              href: "/horarios",
+            }
+          : {
+              eyebrow: "Primera vez",
+              title: "Tu primera clase te está esperando",
+              subtitle:
+                "Reserva tu primera clase y empieza tu experiencia ÉLAN.",
+              label: "Reservar mi clase",
+              href: "/horarios",
+            };
+    }
+  }
 
   return (
     <>
@@ -149,19 +189,19 @@ export default async function Home() {
       <section className="mx-auto max-w-6xl px-5 pb-8">
         <div className="surface-card relative overflow-hidden rounded-3xl px-8 py-16 text-center shadow-soft">
           <p className="mb-3 text-[0.7rem] uppercase tracking-luxe text-gold">
-            Primera vez
+            {cta.eyebrow}
           </p>
           <h2 className="font-serif text-4xl font-light text-ink sm:text-5xl text-balance">
-            Tu primera clase te está esperando
+            {cta.title}
           </h2>
           <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-ink-soft">
-            Crea tu cuenta, compra un paquete y reserva tu lugar en segundos.
+            {cta.subtitle}
           </p>
           <Link
-            href="/registro"
+            href={cta.href}
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-pink px-8 py-3.5 text-sm uppercase tracking-[0.18em] text-white shadow-soft transition-colors hover:bg-pink-strong"
           >
-            Crear mi cuenta <ArrowRight size={16} strokeWidth={1.5} />
+            {cta.label} <ArrowRight size={16} strokeWidth={1.5} />
           </Link>
         </div>
       </section>
