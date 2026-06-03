@@ -216,6 +216,76 @@ export async function getUpcomingSessions(
     .filter((s): s is SessionView => s !== null);
 }
 
+/**
+ * Sessions in a window around now (admin view), including past ones, enriched
+ * with booked counts. fromDays/toDays are day offsets from today (negative =
+ * past). Seed fallback only has future sessions.
+ */
+export async function getSessionsWindow(
+  fromDays: number,
+  toDays: number,
+): Promise<SessionView[]> {
+  const supabase = await createSupabaseServerClient();
+  const [classTypes, coaches, locations] = await Promise.all([
+    getClassTypes(),
+    getCoaches(),
+    getLocations(),
+  ]);
+
+  if (!supabase) {
+    return generateUpcomingSessions(Math.max(1, toDays))
+      .map((s) => enrich(s, classTypes, coaches, locations))
+      .filter((s): s is SessionView => s !== null)
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  }
+
+  const now = Date.now();
+  const from = new Date(now + fromDays * 86400000);
+  const to = new Date(now + toDays * 86400000);
+
+  const { data: sessions } = await supabase
+    .from("class_sessions")
+    .select("*")
+    .eq("status", "scheduled")
+    .gte("starts_at", from.toISOString())
+    .lte("starts_at", to.toISOString())
+    .order("starts_at", { ascending: true });
+  if (!sessions) return [];
+
+  const ids = sessions.map((s) => s.id);
+  const counts = new Map<string, number>();
+  if (ids.length) {
+    const { data: bookings } = await supabase
+      .from("bookings")
+      .select("session_id")
+      .eq("status", "confirmed")
+      .in("session_id", ids);
+    for (const b of bookings ?? [])
+      counts.set(b.session_id, (counts.get(b.session_id) ?? 0) + 1);
+  }
+
+  return sessions
+    .map((s) =>
+      enrich(
+        {
+          id: s.id,
+          classTypeId: s.class_type_id,
+          coachId: s.coach_id,
+          locationId: s.location_id,
+          startsAt: s.starts_at,
+          endsAt: s.ends_at,
+          capacity: s.capacity,
+          booked: counts.get(s.id) ?? 0,
+          status: s.status,
+        },
+        classTypes,
+        coaches,
+        locations,
+      ),
+    )
+    .filter((s): s is SessionView => s !== null);
+}
+
 // --- mappers ---------------------------------------------------------------
 type Row = Record<string, unknown>;
 
