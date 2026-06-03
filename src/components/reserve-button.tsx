@@ -1,16 +1,15 @@
 import Link from "next/link";
 
 /**
- * Reserve CTA shown on each schedule session. Links into the booking flow
- * (`/cuenta?reservar=<id>`), which requires auth — the account page redirects
- * to /ingresar when the user is not signed in, then completes the reservation.
- * Renders a disabled pill when the session is full.
+ * Reserve CTA shown on each schedule slot. Carries an encoded booking ref
+ * (session or virtual template+date) into the booking flow at `/cuenta`, which
+ * requires auth. Renders a disabled pill when the slot is full.
  */
 export function ReserveButton({
-  sessionId,
+  refStr,
   disabled,
 }: {
-  sessionId: string;
+  refStr: string;
   disabled?: boolean;
 }) {
   if (disabled) {
@@ -23,7 +22,7 @@ export function ReserveButton({
 
   return (
     <Link
-      href={`/cuenta?reservar=${sessionId}`}
+      href={`/cuenta?reservar=${encodeURIComponent(refStr)}`}
       className="rounded-full bg-pink px-5 py-2 text-[0.75rem] uppercase tracking-[0.15em] text-white shadow-soft transition-colors hover:bg-pink-strong"
     >
       Reservar

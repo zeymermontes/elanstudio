@@ -73,3 +73,35 @@ export type SessionView = ClassSession & {
   location: Location;
   spotsLeft: number;
 };
+
+/** A recurring weekly class (the schedule template). */
+export type WeeklyClass = {
+  id: string;
+  classTypeId: string;
+  coachId: string | null;
+  locationId: string | null;
+  weekday: number; // 0 = Sunday … 6 = Saturday
+  startTime: string; // 'HH:MM'
+  durationMin: number;
+  capacity: number;
+  active: boolean;
+};
+
+/** How to book a slot: a concrete (materialized) session, or a virtual
+ * template+date that gets materialized on booking. */
+export type ScheduleRef =
+  | { kind: "session"; sessionId: string }
+  | { kind: "weekly"; weeklyId: string; date: string };
+
+/** A computed schedule entry (from template or materialized session). */
+export type ScheduleSlot = {
+  ref: ScheduleRef;
+  classType: ClassType;
+  coach: Coach | null;
+  location: Location | null;
+  startsAt: string; // ISO
+  endsAt: string; // ISO
+  capacity: number;
+  booked: number;
+  spotsLeft: number;
+};

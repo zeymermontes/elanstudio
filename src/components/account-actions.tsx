@@ -6,12 +6,12 @@ import { reserveAction, cancelAction } from "@/lib/actions/booking";
 import { bookingMessage } from "@/lib/booking-messages";
 import { cancelSubscriptionAction } from "@/lib/actions/subscription";
 
-/** Confirmation card shown when arriving at /cuenta?reservar=<id>. */
+/** Confirmation card shown when arriving at /cuenta?reservar=<ref>. */
 export function ConfirmReserve({
-  sessionId,
+  refStr,
   label,
 }: {
-  sessionId: string;
+  refStr: string;
   label: string;
 }) {
   const [pending, start] = useTransition();
@@ -20,7 +20,7 @@ export function ConfirmReserve({
 
   function confirm() {
     start(async () => {
-      const res = await reserveAction(sessionId);
+      const res = await reserveAction(refStr);
       setMsg({ ok: res.ok, text: bookingMessage(res.code) });
       if (res.ok) router.refresh();
     });

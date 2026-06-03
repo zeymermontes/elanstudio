@@ -2,18 +2,26 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { decodeRef } from "@/lib/schedule-ref";
 
 export type BookingResult = { ok: boolean; code: string };
 
 export async function reserveAction(
-  sessionId: string,
+  refStr: string,
 ): Promise<BookingResult> {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { ok: false, code: "not_configured" };
 
-  const { data, error } = await supabase.rpc("book_session", {
-    p_session: sessionId,
-  });
+  const ref = decodeRef(refStr);
+  if (!ref) return { ok: false, code: "error" };
+
+  const { data, error } =
+    ref.kind === "session"
+      ? await supabase.rpc("book_session", { p_session: ref.sessionId })
+      : await supabase.rpc("book_class", {
+          p_weekly: ref.weeklyId,
+          p_date: ref.date,
+        });
   if (error) return { ok: false, code: "error" };
 
   revalidatePath("/cuenta");

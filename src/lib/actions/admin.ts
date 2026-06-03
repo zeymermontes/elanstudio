@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getProfile } from "@/lib/auth";
+import { decodeRef } from "@/lib/schedule-ref";
 
 export type FormState = { ok?: boolean; error?: string } | null;
 
@@ -407,5 +408,111 @@ export async function setAttendanceAction(
   if (error) return { error: error.message };
   revalidatePath(`/admin/horario/${sessionId}`);
   revalidatePath("/admin/mis-clases");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Weekly recurring template + schedule exceptions
+// ---------------------------------------------------------------------------
+export async function saveWeeklyClassAction(
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+
+  const classTypeId = str(fd, "class_type_id");
+  const startTime = str(fd, "start_time");
+  if (!classTypeId || !startTime)
+    return { error: "Selecciona la clase y la hora." };
+
+  const { data: ct } = await supabase
+    .from("class_types")
+    .select("duration_min, default_capacity")
+    .eq("id", classTypeId)
+    .single();
+
+  const id = str(fd, "id");
+  const row = {
+    class_type_id: classTypeId,
+    coach_id: str(fd, "coach_id") || null,
+    location_id: str(fd, "location_id") || null,
+    weekday: num(fd, "weekday"),
+    start_time: startTime,
+    duration_min: num(fd, "duration_min") || ct?.duration_min || 50,
+    capacity: num(fd, "capacity") || ct?.default_capacity || 10,
+    active: str(fd, "active") !== "false",
+  };
+
+  const { error } = id
+    ? await supabase.from("weekly_classes").update(row).eq("id", id)
+    : await supabase.from("weekly_classes").insert(row);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/horario");
+  revalidatePath("/horarios");
+  return { ok: true };
+}
+
+export async function deleteWeeklyClassAction(id: string): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  const { error } = await supabase.from("weekly_classes").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/horario");
+  revalidatePath("/horarios");
+  return { ok: true };
+}
+
+/** Cancel a specific date (session or virtual template slot), refunding members. */
+export async function cancelClassAction(refStr: string): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  const ref = decodeRef(refStr);
+  if (!ref) return { error: "Referencia inválida." };
+
+  const { error } =
+    ref.kind === "session"
+      ? await supabase.rpc("cancel_session", { p_session: ref.sessionId })
+      : await supabase.rpc("cancel_class", {
+          p_weekly: ref.weeklyId,
+          p_date: ref.date,
+        });
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/horario");
+  revalidatePath("/horarios");
+  return { ok: true };
+}
+
+/** Cover/replace the coach for a specific date (materializes the slot first). */
+export async function coverCoachAction(
+  refStr: string,
+  coachId: string,
+): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  const ref = decodeRef(refStr);
+  if (!ref) return { error: "Referencia inválida." };
+
+  let sessionId: string | null =
+    ref.kind === "session" ? ref.sessionId : null;
+  if (ref.kind === "weekly") {
+    const { data } = await supabase.rpc("materialize_session", {
+      p_weekly: ref.weeklyId,
+      p_date: ref.date,
+    });
+    sessionId = (data as string | null) ?? null;
+  }
+  if (!sessionId) return { error: "No se pudo preparar la sesión." };
+
+  const { error } = await supabase
+    .from("class_sessions")
+    .update({ coach_id: coachId || null })
+    .eq("id", sessionId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/horario");
+  revalidatePath("/horarios");
   return { ok: true };
 }

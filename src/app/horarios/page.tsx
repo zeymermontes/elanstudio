@@ -1,22 +1,23 @@
 import type { Metadata } from "next";
 import { Clock, MapPin, User } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { getUpcomingSessions } from "@/lib/data";
+import { getSchedule } from "@/lib/data";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
 import { ReserveButton } from "@/components/reserve-button";
-import type { SessionView } from "@/lib/types";
+import { encodeRef } from "@/lib/schedule-ref";
+import type { ScheduleSlot } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Horarios" };
 
-// Always render the current week.
+// Always render the current schedule.
 export const dynamic = "force-dynamic";
 
 export default async function HorariosPage() {
-  const sessions = await getUpcomingSessions(7);
+  const slots = await getSchedule(7);
 
   // Group by calendar day.
-  const byDay = new Map<string, SessionView[]>();
-  for (const s of sessions) {
+  const byDay = new Map<string, ScheduleSlot[]>();
+  for (const s of slots) {
     const key = s.startsAt.slice(0, 10);
     const list = byDay.get(key) ?? [];
     list.push(s);
@@ -32,15 +33,20 @@ export default async function HorariosPage() {
       />
 
       <div className="mx-auto max-w-4xl space-y-12 px-5">
-        {[...byDay.entries()].map(([day, daySessions]) => (
+        {byDay.size === 0 ? (
+          <p className="text-center text-sm text-ink-soft">
+            Aún no hay clases publicadas. Vuelve pronto.
+          </p>
+        ) : null}
+        {[...byDay.entries()].map(([day, daySlots]) => (
           <section key={day}>
             <h2 className="mb-5 font-serif text-2xl text-ink">
-              {cap(formatDayLabel(daySessions[0].startsAt))}
+              {cap(formatDayLabel(daySlots[0].startsAt))}
             </h2>
             <div className="space-y-3">
-              {daySessions.map((s) => (
+              {daySlots.map((s) => (
                 <article
-                  key={s.id}
+                  key={encodeRef(s.ref)}
                   className="surface-card flex flex-col gap-4 rounded-2xl px-6 py-5 shadow-soft sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex items-center gap-5">
@@ -58,12 +64,17 @@ export default async function HorariosPage() {
                         {s.classType.name}
                       </h3>
                       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
-                        <span className="inline-flex items-center gap-1">
-                          <User size={12} strokeWidth={1.5} /> {s.coach.name}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin size={12} strokeWidth={1.5} /> {s.location.name}
-                        </span>
+                        {s.coach ? (
+                          <span className="inline-flex items-center gap-1">
+                            <User size={12} strokeWidth={1.5} /> {s.coach.name}
+                          </span>
+                        ) : null}
+                        {s.location ? (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin size={12} strokeWidth={1.5} />{" "}
+                            {s.location.name}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -80,7 +91,7 @@ export default async function HorariosPage() {
                         : `${s.spotsLeft} lugares`}
                     </span>
                     <ReserveButton
-                      sessionId={s.id}
+                      refStr={encodeRef(s.ref)}
                       disabled={s.spotsLeft === 0}
                     />
                   </div>

@@ -1,76 +1,159 @@
-import Link from "next/link";
-import { ClipboardCheck } from "lucide-react";
-import { getClassTypes, getCoaches, getLocations, getUpcomingSessions } from "@/lib/data";
-import { SessionForm } from "@/components/admin/session-form";
-import { DeleteButton } from "@/components/admin/delete-button";
-import { deleteSessionAction } from "@/lib/actions/admin";
-import { formatDayLabel, formatTime, cap } from "@/lib/format";
 import { requireAdmin } from "@/lib/auth";
+import {
+  getClassTypes,
+  getCoaches,
+  getLocations,
+  getWeeklyClasses,
+  getSchedule,
+} from "@/lib/data";
+import { SessionForm } from "@/components/admin/session-form";
+import {
+  WeeklyClassForm,
+  WEEKDAYS,
+} from "@/components/admin/weekly-class-form";
+import { ScheduleSlotActions } from "@/components/admin/schedule-slot-actions";
+import { Tabs } from "@/components/admin/tabs";
+import { encodeRef } from "@/lib/schedule-ref";
+import { formatDayLabel, formatTime, cap } from "@/lib/format";
+import type { ScheduleSlot } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminHorarioPage() {
   await requireAdmin();
-  const [classTypes, coaches, locations, sessions] = await Promise.all([
+  const [classTypes, coaches, locations, weekly, schedule] = await Promise.all([
     getClassTypes(),
     getCoaches(),
     getLocations(),
-    getUpcomingSessions(14),
+    getWeeklyClasses(),
+    getSchedule(21),
   ]);
+
+  // Group the computed schedule by day.
+  const byDay = new Map<string, ScheduleSlot[]>();
+  for (const s of schedule) {
+    const key = s.startsAt.slice(0, 10);
+    const list = byDay.get(key) ?? [];
+    list.push(s);
+    byDay.set(key, list);
+  }
+
+  // --- Tab: weekly template ---
+  const plantillaTab = (
+    <section>
+      <p className="mb-6 text-sm text-ink-soft">
+        Define tu horario semanal fijo. Se repite automáticamente cada semana.
+        Cambiar el coach aquí lo reemplaza de ahora en adelante.
+      </p>
+      <h3 className="mb-3 text-[0.7rem] uppercase tracking-luxe text-gold">
+        Agregar clase semanal
+      </h3>
+      <WeeklyClassForm classTypes={classTypes} coaches={coaches} locations={locations} />
+
+      <div className="mt-8 space-y-7">
+        {WEEKDAYS.map((dname, wd) => {
+          const slots = weekly.filter((w) => w.weekday === wd);
+          if (!slots.length) return null;
+          return (
+            <div key={wd}>
+              <h3 className="mb-3 font-serif text-xl text-ink">{dname}</h3>
+              <div className="space-y-4">
+                {slots.map((w) => (
+                  <WeeklyClassForm
+                    key={w.id}
+                    weekly={w}
+                    classTypes={classTypes}
+                    coaches={coaches}
+                    locations={locations}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {weekly.length === 0 ? (
+          <p className="text-sm text-ink-soft">
+            Aún no hay clases semanales. Agrega la primera arriba.
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+
+  // --- Tab: upcoming computed schedule (with exceptions) ---
+  const proximasTab = (
+    <section>
+      <p className="mb-6 text-sm text-ink-soft">
+        Próximas clases (de tu plantilla + eventos). Aquí cubres a un coach por
+        un día o cancelas una clase puntual.
+      </p>
+      {byDay.size === 0 ? (
+        <p className="text-sm text-ink-soft">No hay clases próximas.</p>
+      ) : (
+        <div className="space-y-8">
+          {[...byDay.entries()].map(([day, daySlots]) => (
+            <div key={day}>
+              <h3 className="mb-3 font-serif text-xl text-ink">
+                {cap(formatDayLabel(daySlots[0].startsAt))}
+              </h3>
+              <div className="space-y-3">
+                {daySlots.map((s) => (
+                  <article
+                    key={encodeRef(s.ref)}
+                    className="surface-card flex flex-col gap-3 rounded-xl px-5 py-4 shadow-soft"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-serif text-lg text-ink">
+                          {formatTime(s.startsAt)} · {s.classType.name}
+                        </p>
+                        <p className="text-xs text-ink-soft">
+                          {s.coach?.name ?? "Sin coach"}
+                          {s.location?.name ? ` · ${s.location.name}` : ""} ·{" "}
+                          {s.booked}/{s.capacity} reservas
+                        </p>
+                      </div>
+                    </div>
+                    <ScheduleSlotActions
+                      refStr={encodeRef(s.ref)}
+                      coaches={coaches}
+                      currentCoachId={s.coach?.id ?? null}
+                      sessionId={s.ref.kind === "session" ? s.ref.sessionId : null}
+                    />
+                  </article>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+
+  // --- Tab: one-off special event ---
+  const eventoTab = (
+    <section>
+      <p className="mb-6 text-sm text-ink-soft">
+        Crea una clase o evento único (fuera del horario semanal).
+      </p>
+      <SessionForm classTypes={classTypes} coaches={coaches} locations={locations} />
+    </section>
+  );
 
   return (
     <div>
       <h1 className="font-serif text-4xl text-ink">Horario</h1>
       <p className="mt-1 mb-8 text-sm text-ink-soft">
-        Agenda nuevas clases y administra las próximas sesiones.
+        Tu horario semanal se repite solo. Ajusta excepciones cuando haga falta.
       </p>
 
-      <section className="mb-10">
-        <h2 className="mb-3 text-[0.7rem] uppercase tracking-luxe text-gold">
-          Agendar clase
-        </h2>
-        <SessionForm classTypes={classTypes} coaches={coaches} locations={locations} />
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-[0.7rem] uppercase tracking-luxe text-gold">
-          Próximas sesiones ({sessions.length})
-        </h2>
-        {sessions.length === 0 ? (
-          <p className="text-sm text-ink-soft">No hay sesiones agendadas.</p>
-        ) : (
-          <div className="space-y-2">
-            {sessions.map((s) => (
-              <article
-                key={s.id}
-                className="surface-card flex items-center justify-between gap-4 rounded-xl px-5 py-4 shadow-soft"
-              >
-                <div>
-                  <p className="font-serif text-lg text-ink">{s.classType.name}</p>
-                  <p className="text-xs text-ink-soft">
-                    {cap(formatDayLabel(s.startsAt))} · {formatTime(s.startsAt)} ·{" "}
-                    {s.coach?.name} · {s.location?.name} ·{" "}
-                    {s.booked}/{s.capacity} reservas
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-4">
-                  <Link
-                    href={`/admin/horario/${s.id}`}
-                    className="inline-flex items-center gap-1.5 text-[0.7rem] uppercase tracking-[0.12em] text-pink-strong transition-colors hover:text-ink"
-                  >
-                    <ClipboardCheck size={14} strokeWidth={1.5} /> Lista
-                  </Link>
-                  <DeleteButton
-                    id={s.id}
-                    onDelete={deleteSessionAction}
-                    confirmText="¿Eliminar esta sesión?"
-                  />
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+      <Tabs
+        tabs={[
+          { key: "plantilla", label: "Horario semanal", content: plantillaTab },
+          { key: "proximas", label: "Próximas clases", content: proximasTab },
+          { key: "evento", label: "Evento único", content: eventoTab },
+        ]}
+      />
     </div>
   );
 }

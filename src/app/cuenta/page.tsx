@@ -11,6 +11,7 @@ import {
   CancelSubscription,
 } from "@/components/account-actions";
 import { OnboardingForm } from "@/components/onboarding-form";
+import { decodeRef } from "@/lib/schedule-ref";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
@@ -46,7 +47,9 @@ export default async function CuentaPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    const next = reservar ? `/cuenta?reservar=${reservar}` : "/cuenta";
+    const next = reservar
+      ? `/cuenta?reservar=${encodeURIComponent(reservar)}`
+      : "/cuenta";
     redirect(`/ingresar?next=${encodeURIComponent(next)}`);
   }
 
@@ -103,24 +106,43 @@ export default async function CuentaPage({
 
   // Label for the reservation confirmation card.
   let reservarLabel: string | null = null;
-  if (reservar) {
+  const reserveRef = reservar ? decodeRef(reservar) : null;
+  if (reserveRef?.kind === "session") {
     const { data: sess } = await supabase
       .from("class_sessions")
       .select("starts_at, class_types(name)")
-      .eq("id", reservar)
+      .eq("id", reserveRef.sessionId)
       .single();
     if (sess) {
-      // Nested relations may come back as an object or a single-element array.
-      const raw = (sess as unknown as {
+      const raw = sess as unknown as {
         starts_at: string;
         class_types: { name: string } | { name: string }[] | null;
-      });
+      };
       const ct = Array.isArray(raw.class_types)
         ? raw.class_types[0]
         : raw.class_types;
       reservarLabel = `${ct?.name ?? "Clase"} · ${cap(
         formatDayLabel(raw.starts_at),
       )} ${formatTime(raw.starts_at)}`;
+    }
+  } else if (reserveRef?.kind === "weekly") {
+    const { data: wc } = await supabase
+      .from("weekly_classes")
+      .select("start_time, class_types(name)")
+      .eq("id", reserveRef.weeklyId)
+      .single();
+    if (wc) {
+      const raw = wc as unknown as {
+        start_time: string;
+        class_types: { name: string } | { name: string }[] | null;
+      };
+      const ct = Array.isArray(raw.class_types)
+        ? raw.class_types[0]
+        : raw.class_types;
+      const startsAt = `${reserveRef.date}T${String(raw.start_time).slice(0, 5)}:00`;
+      reservarLabel = `${ct?.name ?? "Clase"} · ${cap(
+        formatDayLabel(startsAt),
+      )} ${formatTime(startsAt)}`;
     }
   }
 
@@ -162,7 +184,7 @@ export default async function CuentaPage({
       ) : null}
 
       {reservar && reservarLabel ? (
-        <ConfirmReserve sessionId={reservar} label={reservarLabel} />
+        <ConfirmReserve refStr={reservar} label={reservarLabel} />
       ) : null}
 
       {/* Credits */}
