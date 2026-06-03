@@ -106,13 +106,15 @@ export default async function Home() {
                 className="group surface-card overflow-hidden rounded-2xl shadow-soft"
               >
                 {c.imageUrl ? (
-                  <img
-                    src={c.imageUrl}
-                    alt={c.name}
-                    className="h-44 w-full object-cover"
-                  />
+                  <div className="aspect-square w-full bg-cream">
+                    <img
+                      src={c.imageUrl}
+                      alt={c.name}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
                 ) : (
-                  <div className="flex h-44 items-center justify-center bg-gradient-to-br from-pink-soft to-cream">
+                  <div className="flex aspect-square w-full items-center justify-center bg-gradient-to-br from-pink-soft to-cream">
                     <span className="font-serif text-3xl text-pink-strong/70 italic">
                       {c.name.split(" ")[0]}
                     </span>
