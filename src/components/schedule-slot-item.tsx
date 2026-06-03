@@ -130,7 +130,6 @@ function Modal({
           <div className="mt-6 flex items-start gap-4 rounded-2xl bg-cream/60 px-4 py-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-pink-soft to-cream">
               {c.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img src={c.photoUrl} alt={c.name} className="h-full w-full object-cover" />
               ) : (
                 <span className="font-serif text-lg italic text-pink-strong/60">
