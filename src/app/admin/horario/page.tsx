@@ -12,7 +12,7 @@ import { WEEKDAYS } from "@/lib/weekdays";
 import { ScheduleSlotActions } from "@/components/admin/schedule-slot-actions";
 import { Tabs } from "@/components/admin/tabs";
 import { encodeRef } from "@/lib/schedule-ref";
-import { formatDayLabel, formatTime, cap } from "@/lib/format";
+import { formatDayLabel, formatTime, dayKey, cap } from "@/lib/format";
 import type { ScheduleSlot } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -27,10 +27,10 @@ export default async function AdminHorarioPage() {
     getSchedule(21),
   ]);
 
-  // Group the computed schedule by day.
+  // Group the computed schedule by local calendar day.
   const byDay = new Map<string, ScheduleSlot[]>();
   for (const s of schedule) {
-    const key = s.startsAt.slice(0, 10);
+    const key = dayKey(s.startsAt);
     const list = byDay.get(key) ?? [];
     list.push(s);
     byDay.set(key, list);

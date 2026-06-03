@@ -3,7 +3,13 @@ import { Clock, MapPin, User, Sun, Sunset } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs } from "@/components/admin/tabs";
 import { getSchedule } from "@/lib/data";
-import { formatDayLabel, formatTime, formatTabDay, cap } from "@/lib/format";
+import {
+  formatDayLabel,
+  formatTime,
+  formatTabDay,
+  dayKey,
+  cap,
+} from "@/lib/format";
 import { ReserveButton } from "@/components/reserve-button";
 import { encodeRef } from "@/lib/schedule-ref";
 import type { ScheduleSlot } from "@/lib/types";
@@ -83,10 +89,10 @@ function PartOfDay({
 export default async function HorariosPage() {
   const slots = await getSchedule(7);
 
-  // Group by calendar day.
+  // Group by local calendar day (so morning/afternoon never split into two tabs).
   const byDay = new Map<string, ScheduleSlot[]>();
   for (const s of slots) {
-    const key = s.startsAt.slice(0, 10);
+    const key = dayKey(s.startsAt);
     const list = byDay.get(key) ?? [];
     list.push(s);
     byDay.set(key, list);

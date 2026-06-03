@@ -31,6 +31,14 @@ export function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** Local calendar-day key (YYYY-MM-DD) — groups by the day as shown, not UTC. */
+export function dayKey(iso: string): string {
+  const d = new Date(iso);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 /** Short tab label like "Lun 8". */
 export function formatTabDay(iso: string): string {
   const d = new Date(iso);
