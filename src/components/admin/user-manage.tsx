@@ -153,7 +153,11 @@ export function RoleToggle({
       : "¿Dar acceso de administrador a esta persona? Podrá gestionar todo el estudio.";
     if (!confirm(msg)) return;
     start(async () => {
-      await setRoleAction(userId, !isAdmin);
+      const res = await setRoleAction(userId, !isAdmin);
+      if (res?.error) {
+        alert(res.error);
+        return;
+      }
       router.refresh();
     });
   }

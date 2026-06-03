@@ -116,9 +116,26 @@ export async function setRoleAction(
   userId: string,
   makeAdmin: boolean,
 ): Promise<FormState> {
-  if (!(await ensureAdmin())) return { error: "No autorizado." };
+  const me = await getProfile();
+  if (!me || me.role !== "admin") return { error: "No autorizado." };
   const admin = createSupabaseAdminClient();
   if (!admin) return { error: NOT_CONFIGURED };
+
+  // Protections when revoking admin access.
+  if (!makeAdmin) {
+    if (userId === me.id) {
+      return {
+        error: "No puedes quitarte el acceso de administrador a ti misma.",
+      };
+    }
+    const { count } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "admin");
+    if ((count ?? 0) <= 1) {
+      return { error: "Debe haber al menos un administrador." };
+    }
+  }
 
   const { error } = await admin
     .from("profiles")
