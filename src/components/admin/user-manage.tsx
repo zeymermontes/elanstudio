@@ -6,7 +6,9 @@ import {
   adjustCreditsAction,
   grantSubscriptionAction,
   cancelUserSubscriptionAction,
+  setRoleAction,
 } from "@/lib/actions/admin-users";
+import { Shield, ShieldOff } from "lucide-react";
 import type { FormState } from "@/lib/actions/admin";
 import { Field, StatusBanner, SaveButton, inputClass } from "./form-ui";
 
@@ -131,6 +133,53 @@ export function GrantSubscriptionForm({ userId }: { userId: string }) {
         </div>
       </div>
     </form>
+  );
+}
+
+/** Toggle a member's admin role. */
+export function RoleToggle({
+  userId,
+  isAdmin,
+}: {
+  userId: string;
+  isAdmin: boolean;
+}) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+
+  function toggle() {
+    const msg = isAdmin
+      ? "¿Quitar el acceso de administrador a esta persona?"
+      : "¿Dar acceso de administrador a esta persona? Podrá gestionar todo el estudio.";
+    if (!confirm(msg)) return;
+    start(async () => {
+      await setRoleAction(userId, !isAdmin);
+      router.refresh();
+    });
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      disabled={pending}
+      className={`inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-[0.7rem] uppercase tracking-[0.12em] transition-colors disabled:opacity-60 ${
+        isAdmin
+          ? "border-line text-ink-soft hover:text-pink-strong"
+          : "border-gold/50 text-gold hover:border-gold"
+      }`}
+    >
+      {isAdmin ? (
+        <>
+          <ShieldOff size={14} strokeWidth={1.5} />
+          {pending ? "…" : "Quitar admin"}
+        </>
+      ) : (
+        <>
+          <Shield size={14} strokeWidth={1.5} />
+          {pending ? "…" : "Hacer admin"}
+        </>
+      )}
+    </button>
   );
 }
 

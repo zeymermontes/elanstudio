@@ -111,6 +111,26 @@ export async function grantSubscriptionAction(
   return { ok: true };
 }
 
+/** Grant or revoke admin role for a member. */
+export async function setRoleAction(
+  userId: string,
+  makeAdmin: boolean,
+): Promise<FormState> {
+  if (!(await ensureAdmin())) return { error: "No autorizado." };
+  const admin = createSupabaseAdminClient();
+  if (!admin) return { error: NOT_CONFIGURED };
+
+  const { error } = await admin
+    .from("profiles")
+    .update({ role: makeAdmin ? "admin" : "member" })
+    .eq("id", userId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/usuarios/${userId}`);
+  revalidatePath("/admin/usuarios");
+  return { ok: true };
+}
+
 /** Cancel a member's active manual/MP subscription. */
 export async function cancelUserSubscriptionAction(
   userId: string,

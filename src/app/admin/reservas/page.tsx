@@ -57,7 +57,8 @@ export default async function AdminReservasPage() {
         <p className="text-sm text-ink-soft">Aún no hay reservas.</p>
       ) : (
         <div className="surface-card overflow-hidden rounded-2xl shadow-soft">
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-left text-sm">
             <thead className="border-b border-line text-[0.65rem] uppercase tracking-[0.12em] text-ink-soft">
               <tr>
                 <th className="px-5 py-3">Miembro</th>
@@ -81,6 +82,7 @@ export default async function AdminReservasPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

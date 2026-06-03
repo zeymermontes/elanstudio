@@ -7,6 +7,7 @@ import {
   AdjustCreditsForm,
   GrantSubscriptionForm,
   CancelUserSubscription,
+  RoleToggle,
 } from "@/components/admin/user-manage";
 
 export const dynamic = "force-dynamic";
@@ -59,13 +60,20 @@ export default async function UsuarioDetailPage({
         <ArrowLeft size={14} strokeWidth={1.5} /> Usuarios
       </Link>
 
-      <h1 className="font-serif text-4xl text-ink">{m.fullName || "Miembro"}</h1>
-      <p className="mt-1 text-sm text-ink-soft">
-        {m.email}
-        {m.phone ? ` · ${m.phone}` : ""}
-        {m.birthDate ? ` · 🎂 ${cap(formatDayLabel(m.birthDate))}` : ""}
-        {m.role === "admin" ? " · admin" : ""}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-4xl text-ink">
+            {m.fullName || "Miembro"}
+          </h1>
+          <p className="mt-1 text-sm text-ink-soft">
+            {m.email}
+            {m.phone ? ` · ${m.phone}` : ""}
+            {m.birthDate ? ` · 🎂 ${cap(formatDayLabel(m.birthDate))}` : ""}
+            {m.role === "admin" ? " · admin" : ""}
+          </p>
+        </div>
+        <RoleToggle userId={m.id} isAdmin={m.role === "admin"} />
+      </div>
 
       {/* Health / intake info */}
       {m.health || m.injuries || m.activityType || m.notes ? (
@@ -240,7 +248,8 @@ export default async function UsuarioDetailPage({
           <p className="text-sm text-ink-soft">Sin movimientos.</p>
         ) : (
           <div className="surface-card overflow-hidden rounded-2xl shadow-soft">
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[460px] text-left text-sm">
               <tbody>
                 {m.ledger.map((l, i) => {
                   const expired =
@@ -279,6 +288,7 @@ export default async function UsuarioDetailPage({
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </section>
