@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Clock, MapPin, User, X, Signal, ArrowRight } from "lucide-react";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
+import { ReserveButton } from "@/components/reserve-button";
 import type { ScheduleSlot } from "@/lib/types";
 
 /**
@@ -22,12 +23,13 @@ export function ScheduleSlotItem({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="surface-card flex w-full items-center justify-between gap-4 rounded-2xl px-6 py-5 text-left shadow-soft transition-colors hover:border-pink/40"
-      >
-        <div className="flex items-center gap-5">
+      <article className="surface-card flex flex-col gap-4 rounded-2xl px-6 py-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+        {/* Click the info to open the detail modal */}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-5 text-left"
+        >
           <div className="text-center">
             <p className="font-serif text-xl text-pink-strong">
               {formatTime(slot.startsAt)}
@@ -38,7 +40,7 @@ export function ScheduleSlotItem({
           </div>
           <div className="h-12 w-px bg-line" />
           <div>
-            <h3 className="font-serif text-xl text-ink">
+            <h3 className="font-serif text-xl text-ink transition-colors hover:text-pink-strong">
               {slot.classType.name}
             </h3>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
@@ -54,17 +56,21 @@ export function ScheduleSlotItem({
               ) : null}
             </div>
           </div>
-        </div>
+        </button>
 
-        <span
-          className={`inline-flex shrink-0 items-center gap-1 text-xs ${
-            full ? "text-ink-soft" : "text-gold"
-          }`}
-        >
-          <Clock size={12} strokeWidth={1.5} />
-          {full ? "Sin lugares" : `${slot.spotsLeft} lugares`}
-        </span>
-      </button>
+        <div className="flex items-center justify-between gap-4 sm:justify-end">
+          <span
+            className={`inline-flex items-center gap-1 text-xs ${
+              full ? "text-ink-soft" : "text-gold"
+            }`}
+          >
+            <Clock size={12} strokeWidth={1.5} />
+            {full ? "Sin lugares" : `${slot.spotsLeft} lugares`}
+          </span>
+          {/* Direct reserve shortcut (skips the modal) */}
+          <ReserveButton refStr={refStr} disabled={full} />
+        </div>
+      </article>
 
       {open ? (
         <Modal slot={slot} refStr={refStr} full={full} onClose={() => setOpen(false)} />
