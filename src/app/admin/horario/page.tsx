@@ -36,7 +36,36 @@ export default async function AdminHorarioPage() {
     byDay.set(key, list);
   }
 
-  // --- Tab: weekly template ---
+  // --- Tab: weekly template (with a sub-tab per weekday) ---
+  const dayOrder = [1, 2, 3, 4, 5, 6, 0]; // Mon → Sun
+  const dayTabs = dayOrder.map((wd) => {
+    const slots = weekly.filter((w) => w.weekday === wd);
+    return {
+      key: String(wd),
+      label: `${WEEKDAYS[wd].slice(0, 3)}${slots.length ? ` (${slots.length})` : ""}`,
+      content: (
+        <div className="space-y-4">
+          {slots.length === 0 ? (
+            <p className="text-sm text-ink-soft">
+              Sin clases el {WEEKDAYS[wd].toLowerCase()}. Agrégalas con el
+              formulario de arriba.
+            </p>
+          ) : (
+            slots.map((w) => (
+              <WeeklyClassForm
+                key={w.id}
+                weekly={w}
+                classTypes={classTypes}
+                coaches={coaches}
+                locations={locations}
+              />
+            ))
+          )}
+        </div>
+      ),
+    };
+  });
+
   const plantillaTab = (
     <section>
       <p className="mb-6 text-sm text-ink-soft">
@@ -48,32 +77,11 @@ export default async function AdminHorarioPage() {
       </h3>
       <WeeklyClassForm classTypes={classTypes} coaches={coaches} locations={locations} />
 
-      <div className="mt-8 space-y-7">
-        {WEEKDAYS.map((dname, wd) => {
-          const slots = weekly.filter((w) => w.weekday === wd);
-          if (!slots.length) return null;
-          return (
-            <div key={wd}>
-              <h3 className="mb-3 font-serif text-xl text-ink">{dname}</h3>
-              <div className="space-y-4">
-                {slots.map((w) => (
-                  <WeeklyClassForm
-                    key={w.id}
-                    weekly={w}
-                    classTypes={classTypes}
-                    coaches={coaches}
-                    locations={locations}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
-        {weekly.length === 0 ? (
-          <p className="text-sm text-ink-soft">
-            Aún no hay clases semanales. Agrega la primera arriba.
-          </p>
-        ) : null}
+      <div className="mt-8">
+        <h3 className="mb-4 text-[0.7rem] uppercase tracking-luxe text-gold">
+          Clases por día
+        </h3>
+        <Tabs tabs={dayTabs} />
       </div>
     </section>
   );

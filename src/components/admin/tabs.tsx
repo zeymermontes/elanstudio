@@ -16,7 +16,7 @@ export function Tabs({
 
   return (
     <div>
-      <div className="mb-8 flex gap-6 border-b border-line">
+      <div className="mb-8 flex gap-5 overflow-x-auto border-b border-line">
         {tabs.map((t) => {
           const on = t.key === active;
           return (
@@ -24,7 +24,7 @@ export function Tabs({
               key={t.key}
               type="button"
               onClick={() => setActive(t.key)}
-              className={`-mb-px border-b-2 pb-3 text-sm uppercase tracking-[0.15em] transition-colors ${
+              className={`-mb-px shrink-0 whitespace-nowrap border-b-2 pb-3 text-sm uppercase tracking-[0.12em] transition-colors ${
                 on
                   ? "border-pink text-pink-strong"
                   : "border-transparent text-ink-soft hover:text-ink"
