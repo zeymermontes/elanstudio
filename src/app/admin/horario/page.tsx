@@ -7,10 +7,8 @@ import {
   getSchedule,
 } from "@/lib/data";
 import { SessionForm } from "@/components/admin/session-form";
-import {
-  WeeklyClassForm,
-  WEEKDAYS,
-} from "@/components/admin/weekly-class-form";
+import { WeeklyClassForm } from "@/components/admin/weekly-class-form";
+import { WEEKDAYS } from "@/lib/weekdays";
 import { ScheduleSlotActions } from "@/components/admin/schedule-slot-actions";
 import { Tabs } from "@/components/admin/tabs";
 import { encodeRef } from "@/lib/schedule-ref";

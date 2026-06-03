@@ -7,18 +7,9 @@ import {
   type FormState,
 } from "@/lib/actions/admin";
 import type { ClassType, Coach, Location, WeeklyClass } from "@/lib/types";
+import { WEEKDAYS } from "@/lib/weekdays";
 import { Field, StatusBanner, SaveButton, inputClass } from "./form-ui";
 import { DeleteButton } from "./delete-button";
-
-export const WEEKDAYS = [
-  "Domingo",
-  "Lunes",
-  "Martes",
-  "Miércoles",
-  "Jueves",
-  "Viernes",
-  "Sábado",
-];
 
 export function WeeklyClassForm({
   weekly,
