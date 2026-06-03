@@ -101,9 +101,18 @@ function Modal({
         <p className="text-[0.7rem] uppercase tracking-luxe text-gold">
           {cap(formatDayLabel(slot.startsAt))} · {formatTime(slot.startsAt)}
         </p>
-        <h2 className="mt-1 font-serif text-3xl text-ink">
-          {slot.classType.name}
-        </h2>
+        <div className="mt-1.5 flex items-center gap-2.5">
+          {slot.classType.imageUrl ? (
+            <img
+              src={slot.classType.imageUrl}
+              alt={slot.classType.name}
+              className="h-9 w-9 shrink-0 rounded-md bg-cream object-cover"
+            />
+          ) : null}
+          <h2 className="font-serif text-3xl text-ink">
+            {slot.classType.name}
+          </h2>
+        </div>
 
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs uppercase tracking-[0.12em] text-ink-soft">
           <span className="inline-flex items-center gap-1.5">
@@ -118,14 +127,6 @@ function Modal({
             </span>
           ) : null}
         </div>
-
-        {slot.classType.imageUrl ? (
-          <img
-            src={slot.classType.imageUrl}
-            alt={slot.classType.name}
-            className="mt-5 max-h-56 w-full rounded-2xl bg-cream object-contain"
-          />
-        ) : null}
 
         {slot.classType.description ? (
           <p className="mt-5 text-sm leading-relaxed text-ink-soft">
