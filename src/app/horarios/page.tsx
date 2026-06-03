@@ -1,66 +1,15 @@
 import type { Metadata } from "next";
-import { Clock, MapPin, User, Sun, Sunset } from "lucide-react";
+import { Sun, Sunset } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs } from "@/components/admin/tabs";
 import { getSchedule } from "@/lib/data";
-import {
-  formatDayLabel,
-  formatTime,
-  formatTabDay,
-  dayKey,
-  cap,
-} from "@/lib/format";
-import { ReserveButton } from "@/components/reserve-button";
+import { formatDayLabel, formatTabDay, dayKey, cap } from "@/lib/format";
+import { ScheduleSlotItem } from "@/components/schedule-slot-item";
 import { encodeRef } from "@/lib/schedule-ref";
 import type { ScheduleSlot } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Horarios" };
 export const dynamic = "force-dynamic";
-
-function SlotCard({ s }: { s: ScheduleSlot }) {
-  return (
-    <article className="surface-card flex flex-col gap-4 rounded-2xl px-6 py-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-5">
-        <div className="text-center">
-          <p className="font-serif text-xl text-pink-strong">
-            {formatTime(s.startsAt)}
-          </p>
-          <p className="text-[0.65rem] uppercase tracking-[0.12em] text-ink-soft">
-            {s.classType.durationMin} min
-          </p>
-        </div>
-        <div className="h-12 w-px bg-line" />
-        <div>
-          <h3 className="font-serif text-xl text-ink">{s.classType.name}</h3>
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
-            {s.coach ? (
-              <span className="inline-flex items-center gap-1">
-                <User size={12} strokeWidth={1.5} /> {s.coach.name}
-              </span>
-            ) : null}
-            {s.location ? (
-              <span className="inline-flex items-center gap-1">
-                <MapPin size={12} strokeWidth={1.5} /> {s.location.name}
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between gap-4 sm:justify-end">
-        <span
-          className={`inline-flex items-center gap-1 text-xs ${
-            s.spotsLeft === 0 ? "text-ink-soft" : "text-gold"
-          }`}
-        >
-          <Clock size={12} strokeWidth={1.5} />
-          {s.spotsLeft === 0 ? "Sin lugares" : `${s.spotsLeft} lugares`}
-        </span>
-        <ReserveButton refStr={encodeRef(s.ref)} disabled={s.spotsLeft === 0} />
-      </div>
-    </article>
-  );
-}
 
 function PartOfDay({
   title,
@@ -79,7 +28,7 @@ function PartOfDay({
       </h3>
       <div className="space-y-3">
         {slots.map((s) => (
-          <SlotCard key={encodeRef(s.ref)} s={s} />
+          <ScheduleSlotItem key={encodeRef(s.ref)} slot={s} refStr={encodeRef(s.ref)} />
         ))}
       </div>
     </section>
@@ -125,7 +74,7 @@ export default async function HorariosPage() {
       <PageHeader
         eyebrow="Reserva tu lugar"
         title="Horarios"
-        intro="Elige el día y la clase que mejor se adapten a ti. Los lugares son limitados para cuidar la experiencia."
+        intro="Elige el día y la clase que mejor se adapten a ti. Toca una clase para ver el detalle y reservar."
       />
 
       <div className="mx-auto max-w-4xl px-5">
