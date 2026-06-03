@@ -1,24 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Sparkles, HeartHandshake, Flower2 } from "lucide-react";
 import { defaultSettings as s } from "@/lib/site";
-
-const featuredClasses = [
-  {
-    name: "Fuerza & Tono",
-    desc: "Entrenamiento de fuerza para tonificar con elegancia y bajo impacto.",
-    duration: "50 min",
-  },
-  {
-    name: "Barre Sculpt",
-    desc: "Inspirado en el ballet. Postura, equilibrio y líneas largas.",
-    duration: "45 min",
-  },
-  {
-    name: "Movilidad & Flow",
-    desc: "Movilidad y respiración consciente para todos los niveles.",
-    duration: "50 min",
-  },
-];
+import { getClassTypes } from "@/lib/data";
 
 const values = [
   {
@@ -38,7 +21,11 @@ const values = [
   },
 ];
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const featuredClasses = (await getClassTypes()).slice(0, 3);
+
   return (
     <>
       {/* ---------- Hero ---------- */}
@@ -107,31 +94,45 @@ export default function Home() {
             Encuentra tu ritmo
           </h2>
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {featuredClasses.map((c) => (
-            <article
-              key={c.name}
-              className="group surface-card overflow-hidden rounded-2xl shadow-soft"
-            >
-              <div className="flex h-44 items-center justify-center bg-gradient-to-br from-pink-soft to-cream">
-                <span className="font-serif text-3xl text-pink-strong/70 italic">
-                  {c.name.split(" ")[0]}
-                </span>
-              </div>
-              <div className="px-6 py-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-serif text-2xl text-ink">{c.name}</h3>
-                  <span className="text-[0.7rem] uppercase tracking-[0.15em] text-gold">
-                    {c.duration}
-                  </span>
+        {featuredClasses.length === 0 ? (
+          <p className="text-center text-sm text-ink-soft">
+            Pronto publicaremos nuestras clases.
+          </p>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-3">
+            {featuredClasses.map((c) => (
+              <article
+                key={c.id}
+                className="group surface-card overflow-hidden rounded-2xl shadow-soft"
+              >
+                {c.imageUrl ? (
+                  <img
+                    src={c.imageUrl}
+                    alt={c.name}
+                    className="h-44 w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-44 items-center justify-center bg-gradient-to-br from-pink-soft to-cream">
+                    <span className="font-serif text-3xl text-pink-strong/70 italic">
+                      {c.name.split(" ")[0]}
+                    </span>
+                  </div>
+                )}
+                <div className="px-6 py-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-serif text-2xl text-ink">{c.name}</h3>
+                    <span className="shrink-0 text-[0.7rem] uppercase tracking-[0.15em] text-gold">
+                      {c.durationMin} min
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                    {c.description}
+                  </p>
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                  {c.desc}
-                </p>
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        )}
         <div className="mt-10 text-center">
           <Link
             href="/clases"
