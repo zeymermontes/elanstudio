@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Sparkles, CalendarCheck } from "lucide-react";
 import { getMemberDetail } from "@/lib/admin-data";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
+import { requireAdmin } from "@/lib/auth";
 import {
   AdjustCreditsForm,
   GrantSubscriptionForm,
@@ -36,6 +37,7 @@ export default async function UsuarioDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireAdmin();
   const { id } = await params;
   const m = await getMemberDetail(id);
   if (!m) notFound();

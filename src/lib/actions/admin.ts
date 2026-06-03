@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getProfile } from "@/lib/auth";
 
 export type FormState = { ok?: boolean; error?: string } | null;
@@ -127,11 +128,48 @@ export async function saveCoachAction(
     photo_url: str(fd, "photo_url") || null,
   };
 
-  const { error } = id
-    ? await supabase.from("coaches").update(row).eq("id", id)
-    : await supabase.from("coaches").insert(row);
+  let coachId = id;
+  if (id) {
+    const { error } = await supabase.from("coaches").update(row).eq("id", id);
+    if (error) return { error: error.message };
+  } else {
+    const { data, error } = await supabase
+      .from("coaches")
+      .insert(row)
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    coachId = data.id;
+  }
 
-  if (error) return { error: error.message };
+  // Optionally link this coach to a login account (by email) and promote that
+  // account to the 'coach' role, so they can access their classes in the admin.
+  const email = str(fd, "access_email").toLowerCase();
+  if (email) {
+    const svc = createSupabaseAdminClient();
+    if (svc) {
+      const { data: list } = await svc.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+      const user = (list?.users ?? []).find(
+        (u) => (u.email ?? "").toLowerCase() === email,
+      );
+      if (!user) {
+        return {
+          error: `No existe una cuenta con el correo ${email}. Pídele que se registre primero.`,
+        };
+      }
+      await svc.from("coaches").update({ user_id: user.id }).eq("id", coachId);
+      // Promote to coach, but never downgrade an admin.
+      await svc
+        .from("profiles")
+        .update({ role: "coach" })
+        .eq("id", user.id)
+        .neq("role", "admin");
+    }
+  }
+
   revalidatePath("/admin/coaches");
   revalidatePath("/coaches");
   return { ok: true };
@@ -325,23 +363,49 @@ export async function deleteSessionAction(id: string): Promise<FormState> {
   return { ok: true };
 }
 
+/** Does the given session belong to a coach record linked to this user? */
+async function coachOwnsSession(
+  svc: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+  sessionId: string,
+  userId: string,
+) {
+  const { data } = await svc
+    .from("class_sessions")
+    .select("coaches(user_id)")
+    .eq("id", sessionId)
+    .single();
+  const c = (data as { coaches: { user_id: string } | { user_id: string }[] | null } | null)
+    ?.coaches;
+  const ownerId = Array.isArray(c) ? c[0]?.user_id : c?.user_id;
+  return ownerId === userId;
+}
+
 /**
- * Mark a booked member's attendance for a session.
- * value: true = present, false = no-show, null = clear.
+ * Mark a booked member's attendance for a session. Allowed for admins and for
+ * the coach of that session. value: true = present, false = no-show, null = clear.
  */
 export async function setAttendanceAction(
   sessionId: string,
   userId: string,
   value: boolean | null,
 ): Promise<FormState> {
-  const supabase = await adminClient();
-  if (!supabase) return { error: NOT_CONFIGURED };
-  const { error } = await supabase
+  const me = await getProfile();
+  if (!me || (me.role !== "admin" && me.role !== "coach"))
+    return { error: "No autorizado." };
+  const svc = createSupabaseAdminClient();
+  if (!svc) return { error: NOT_CONFIGURED };
+
+  if (me.role === "coach" && !(await coachOwnsSession(svc, sessionId, me.id))) {
+    return { error: "No autorizado." };
+  }
+
+  const { error } = await svc
     .from("bookings")
     .update({ attended: value })
     .eq("session_id", sessionId)
     .eq("user_id", userId);
   if (error) return { error: error.message };
   revalidatePath(`/admin/horario/${sessionId}`);
+  revalidatePath("/admin/mis-clases");
   return { ok: true };
 }

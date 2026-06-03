@@ -1,9 +1,11 @@
 import { getCoaches } from "@/lib/data";
 import { CoachForm } from "@/components/admin/coach-form";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCoachesPage() {
+  await requireAdmin();
   const coaches = await getCoaches();
   return (
     <div>

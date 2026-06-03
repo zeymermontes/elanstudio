@@ -52,6 +52,18 @@ export function CoachForm({ coach }: { coach?: Coach }) {
           folder="coaches"
           defaultValue={coach?.photoUrl ?? ""}
         />
+        <Field label="Correo de acceso (opcional)">
+          <input
+            name="access_email"
+            type="email"
+            placeholder="coach@correo.com — le da acceso a sus clases"
+            className={inputClass}
+          />
+          <span className="mt-1 block text-xs text-ink-soft">
+            La persona debe tener cuenta. Le dará rol de coach para ver sus
+            clases y vender.
+          </span>
+        </Field>
         <div className="flex items-center justify-end gap-4">
           {coach ? (
             <DeleteButton id={coach.id} onDelete={deleteCoachAction} confirmText="¿Eliminar este coach?" />

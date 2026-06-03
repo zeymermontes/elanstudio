@@ -1,10 +1,12 @@
 import { getServices, getClassTypes } from "@/lib/data";
 import { ServiceForm, ClassTypeForm } from "@/components/admin/class-forms";
 import { Tabs } from "@/components/admin/tabs";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminClasesPage() {
+  await requireAdmin();
   const [services, classTypes] = await Promise.all([
     getServices(),
     getClassTypes(),

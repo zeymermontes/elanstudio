@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { listMembers } from "@/lib/admin-data";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminUsuariosPage() {
+  await requireAdmin();
   const members = await listMembers();
 
   return (

@@ -5,9 +5,10 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { AdminNav } from "./admin-nav";
 import { signOutAction } from "@/lib/actions/auth";
+import type { Role } from "@/lib/auth";
 
 /** Mobile-only top bar + slide-in drawer for the admin navigation. */
-export function AdminMobileNav({ name }: { name: string }) {
+export function AdminMobileNav({ name, role }: { name: string; role: Role }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -56,7 +57,7 @@ export function AdminMobileNav({ name }: { name: string }) {
 
             {/* Close the drawer when any link inside is tapped. */}
             <div onClick={() => setOpen(false)}>
-              <AdminNav />
+              <AdminNav role={role} />
             </div>
 
             <div className="mt-6 border-t border-line pt-4">

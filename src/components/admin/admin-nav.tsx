@@ -12,27 +12,45 @@ import {
   UserCircle,
   MapPin,
   ClipboardList,
+  ClipboardCheck,
   CreditCard,
+  Tag,
 } from "lucide-react";
+import type { Role } from "@/lib/auth";
 
-const items = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/ajustes", label: "Marca", icon: Palette },
-  { href: "/admin/clases", label: "Clases", icon: Dumbbell },
-  { href: "/admin/horario", label: "Horario", icon: CalendarDays },
-  { href: "/admin/paquetes", label: "Paquetes", icon: Package },
-  { href: "/admin/usuarios", label: "Usuarios", icon: UserCircle },
-  { href: "/admin/coaches", label: "Coaches", icon: Users },
-  { href: "/admin/ubicaciones", label: "Ubicaciones", icon: MapPin },
-  { href: "/admin/reservas", label: "Reservas", icon: ClipboardList },
-  { href: "/admin/pagos", label: "Pagos", icon: CreditCard },
+type Item = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  roles: Role[];
+  exact?: boolean;
+};
+
+const ADMIN: Role[] = ["admin"];
+const STAFF: Role[] = ["admin", "coach"];
+
+const items: Item[] = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: STAFF, exact: true },
+  { href: "/admin/mis-clases", label: "Mis clases", icon: ClipboardCheck, roles: ["coach"] },
+  { href: "/admin/vender", label: "Vender", icon: Tag, roles: STAFF },
+  { href: "/admin/ajustes", label: "Marca", icon: Palette, roles: ADMIN },
+  { href: "/admin/clases", label: "Clases", icon: Dumbbell, roles: ADMIN },
+  { href: "/admin/horario", label: "Horario", icon: CalendarDays, roles: ADMIN },
+  { href: "/admin/paquetes", label: "Paquetes", icon: Package, roles: ADMIN },
+  { href: "/admin/usuarios", label: "Usuarios", icon: UserCircle, roles: ADMIN },
+  { href: "/admin/coaches", label: "Coaches", icon: Users, roles: ADMIN },
+  { href: "/admin/ubicaciones", label: "Ubicaciones", icon: MapPin, roles: ADMIN },
+  { href: "/admin/reservas", label: "Reservas", icon: ClipboardList, roles: ADMIN },
+  { href: "/admin/pagos", label: "Pagos", icon: CreditCard, roles: ADMIN },
 ];
 
-export function AdminNav() {
+export function AdminNav({ role }: { role: Role }) {
   const pathname = usePathname();
+  const visible = items.filter((it) => it.roles.includes(role));
+
   return (
     <nav className="space-y-1">
-      {items.map((it) => {
+      {visible.map((it) => {
         const active = it.exact
           ? pathname === it.href
           : pathname?.startsWith(it.href);

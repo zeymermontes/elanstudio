@@ -1,9 +1,11 @@
 import { getAllPackages } from "@/lib/data";
 import { PackageForm } from "@/components/admin/package-form";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPaquetesPage() {
+  await requireAdmin();
   const packages = await getAllPackages();
 
   return (

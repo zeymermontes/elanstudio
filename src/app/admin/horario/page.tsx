@@ -5,10 +5,12 @@ import { SessionForm } from "@/components/admin/session-form";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteSessionAction } from "@/lib/actions/admin";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminHorarioPage() {
+  await requireAdmin();
   const [classTypes, coaches, locations, sessions] = await Promise.all([
     getClassTypes(),
     getCoaches(),

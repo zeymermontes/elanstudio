@@ -111,6 +111,54 @@ export async function grantSubscriptionAction(
   return { ok: true };
 }
 
+/**
+ * Manual sale: add classes to a member by email. Allowed for staff (admin or
+ * coach). Optional expiry, same as a manual credit adjustment.
+ */
+export async function sellAction(
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const me = await getProfile();
+  if (!me || (me.role !== "admin" && me.role !== "coach"))
+    return { error: "No autorizado." };
+  const admin = createSupabaseAdminClient();
+  if (!admin) return { error: NOT_CONFIGURED };
+
+  const email = str(fd, "email").toLowerCase();
+  const classes = Math.abs(num(fd, "amount"));
+  if (!email || !classes)
+    return { error: "Indica el correo y la cantidad de clases." };
+
+  const { data: list } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+  const user = (list?.users ?? []).find(
+    (u) => (u.email ?? "").toLowerCase() === email,
+  );
+  if (!user)
+    return {
+      error: `No existe una cuenta con el correo ${email}. Pídele que se registre primero.`,
+    };
+
+  const expiresStr = str(fd, "expires_at");
+  const expires_at = expiresStr
+    ? new Date(`${expiresStr}T23:59:59`).toISOString()
+    : null;
+
+  const { error } = await admin.from("credit_ledger").insert({
+    user_id: user.id,
+    delta: classes,
+    reason: "manual",
+    expires_at,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/vender");
+  return { ok: true };
+}
+
 /** Grant or revoke admin role for a member. */
 export async function setRoleAction(
   userId: string,

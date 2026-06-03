@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireStaff } from "@/lib/auth";
 import { signOutAction } from "@/lib/actions/auth";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
@@ -11,12 +11,12 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const profile = await requireAdmin();
+  const profile = await requireStaff();
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-10 lg:flex-row">
       {/* Mobile: top bar + slide-in drawer */}
-      <AdminMobileNav name={profile.full_name} />
+      <AdminMobileNav name={profile.full_name} role={profile.role} />
 
       {/* Desktop: sticky sidebar */}
       <aside className="hidden lg:block lg:w-60 lg:shrink-0">
@@ -31,7 +31,7 @@ export default async function AdminLayout({
           </Link>
 
           <div className="my-6">
-            <AdminNav />
+            <AdminNav role={profile.role} />
           </div>
 
           <div className="mt-6 border-t border-line pt-4">

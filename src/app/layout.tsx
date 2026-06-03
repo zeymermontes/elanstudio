@@ -39,7 +39,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const [settings, profile] = await Promise.all([getSettings(), getProfile()]);
-  const isAdmin = profile?.role === "admin";
+  const isStaff = profile?.role === "admin" || profile?.role === "coach";
 
   // Admin-configurable brand colors override the CSS variable defaults.
   const themeOverride = `:root{--brand-pink:${settings.primaryColor};--brand-gold:${settings.accentColor};--bg-bone:${settings.bgColor};}`;
@@ -65,7 +65,7 @@ export default async function RootLayout({
         <style dangerouslySetInnerHTML={{ __html: themeOverride }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <SiteHeader studioName={settings.studioName} isAdmin={isAdmin} />
+        <SiteHeader studioName={settings.studioName} isAdmin={isStaff} />
         <main className="flex-1">{children}</main>
         <SiteFooter settings={settings} />
       </body>

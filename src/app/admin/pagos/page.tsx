@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatMxn } from "@/lib/format";
 import { PaymentsRealtime } from "@/components/admin/payments-realtime";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function AdminPagosPage() {
+  await requireAdmin();
   const supabase = await createSupabaseServerClient();
 
   let rows: Row[] = [];

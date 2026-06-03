@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ClipboardCheck, Users } from "lucide-react";
 import { getReservationsBySession, type ReservationSession } from "@/lib/admin-data";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ function SessionCard({ s, past }: { s: ReservationSession; past: boolean }) {
 }
 
 export default async function AdminReservasPage() {
+  await requireAdmin();
   const sessions = await getReservationsBySession(-45, 60);
 
   // Server component (force-dynamic): current time is intentional.

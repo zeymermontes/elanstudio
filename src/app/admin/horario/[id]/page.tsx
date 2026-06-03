@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Users } from "lucide-react";
-import { getSessionRoster } from "@/lib/admin-data";
+import { requireStaff } from "@/lib/auth";
+import { getSessionRoster, sessionCoachUserId } from "@/lib/admin-data";
 import { CheckInRow } from "@/components/admin/check-in";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
 
@@ -13,15 +14,25 @@ export default async function RosterPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  // Coaches may only view rosters of their own sessions.
+  const profile = await requireStaff();
+  if (profile.role === "coach") {
+    const owner = await sessionCoachUserId(id);
+    if (owner !== profile.id) redirect("/admin/mis-clases");
+  }
+
   const data = await getSessionRoster(id);
   if (!data) notFound();
+
+  const backHref = profile.role === "coach" ? "/admin/mis-clases" : "/admin/horario";
 
   const present = data.roster.filter((r) => r.attended === true).length;
 
   return (
     <div>
       <Link
-        href="/admin/horario"
+        href={backHref}
         className="mb-6 inline-flex items-center gap-2 text-[0.75rem] uppercase tracking-[0.15em] text-ink-soft transition-colors hover:text-pink-strong"
       >
         <ArrowLeft size={14} strokeWidth={1.5} /> Horario

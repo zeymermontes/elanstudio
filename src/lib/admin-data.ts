@@ -339,7 +339,7 @@ export type ReservationSession = {
   endsAt: string;
   coach: string;
   location: string;
-  members: { name: string; attended: boolean | null }[];
+  members: { userId: string; name: string; attended: boolean | null }[];
 };
 
 type RelName = { name: string } | { name: string }[] | null;
@@ -351,6 +351,7 @@ type RelName = { name: string } | { name: string }[] | null;
 export async function getReservationsBySession(
   fromDays = -45,
   toDays = 60,
+  opts: { coachIds?: string[]; includeEmpty?: boolean } = {},
 ): Promise<ReservationSession[]> {
   const admin = createSupabaseAdminClient();
   if (!admin) return [];
@@ -359,7 +360,7 @@ export async function getReservationsBySession(
   const from = new Date(now + fromDays * 86400000).toISOString();
   const to = new Date(now + toDays * 86400000).toISOString();
 
-  const { data: sessions } = await admin
+  let query = admin
     .from("class_sessions")
     .select(
       "id, starts_at, ends_at, class_types(name), coaches(name), locations(name)",
@@ -368,6 +369,9 @@ export async function getReservationsBySession(
     .gte("starts_at", from)
     .lte("starts_at", to)
     .order("starts_at", { ascending: true });
+  if (opts.coachIds) query = query.in("coach_id", opts.coachIds);
+
+  const { data: sessions } = await query;
   if (!sessions?.length) return [];
 
   const ids = sessions.map((s) => s.id);
@@ -389,11 +393,12 @@ export async function getReservationsBySession(
 
   const bySession = new Map<
     string,
-    { name: string; attended: boolean | null }[]
+    { userId: string; name: string; attended: boolean | null }[]
   >();
   for (const b of bookings ?? []) {
     const arr = bySession.get(b.session_id) ?? [];
     arr.push({
+      userId: b.user_id,
       name: names.get(b.user_id) || "Miembro",
       attended: b.attended as boolean | null,
     });
@@ -420,7 +425,36 @@ export async function getReservationsBySession(
         members: bySession.get(sx.id) ?? [],
       };
     })
-    .filter((s) => s.members.length > 0);
+    .filter((s) => opts.includeEmpty || s.members.length > 0);
+}
+
+/** Coach content-record ids linked to a given login (user) id. */
+export async function getCoachIdsForUser(userId: string): Promise<string[]> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return [];
+  const { data } = await admin
+    .from("coaches")
+    .select("id")
+    .eq("user_id", userId);
+  return (data ?? []).map((c) => c.id);
+}
+
+type RelUser = { user_id: string } | { user_id: string }[] | null;
+
+/** The login (user) id of the coach assigned to a session, or null. */
+export async function sessionCoachUserId(
+  sessionId: string,
+): Promise<string | null> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return null;
+  const { data } = await admin
+    .from("class_sessions")
+    .select("coaches(user_id)")
+    .eq("id", sessionId)
+    .single();
+  const c = (data as { coaches: RelUser } | null)?.coaches;
+  const id = Array.isArray(c) ? c[0]?.user_id : c?.user_id;
+  return id ?? null;
 }
 
 /** Booked members for a session, for the check-in (attendance) screen. */

@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CalendarDays, Package, Users, CreditCard, Cake, Gift } from "lucide-react";
+import { requireStaff } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUpcomingBirthdays, getBirthdayBookings } from "@/lib/admin-data";
 import { formatMxn, formatDayLabel, formatTime, cap } from "@/lib/format";
@@ -13,6 +15,9 @@ function daysLabel(d: number) {
 }
 
 export default async function AdminDashboard() {
+  const profile = await requireStaff();
+  if (profile.role === "coach") redirect("/admin/mis-clases");
+
   const supabase = await createSupabaseServerClient();
 
   let upcoming = 0;

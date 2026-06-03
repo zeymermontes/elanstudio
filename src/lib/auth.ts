@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "./supabase/server";
 
+export type Role = "member" | "admin" | "coach";
+
 export type Profile = {
   id: string;
   full_name: string;
   phone: string;
-  role: "member" | "admin";
+  role: Role;
 };
 
 /** The current authenticated user, or null. */
@@ -46,5 +48,13 @@ export async function requireAdmin() {
   const profile = await getProfile();
   if (!profile) redirect("/ingresar?next=/admin");
   if (profile.role !== "admin") redirect("/");
+  return profile;
+}
+
+/** Require staff (admin or coach); redirect everyone else. */
+export async function requireStaff() {
+  const profile = await getProfile();
+  if (!profile) redirect("/ingresar?next=/admin");
+  if (profile.role !== "admin" && profile.role !== "coach") redirect("/");
   return profile;
 }

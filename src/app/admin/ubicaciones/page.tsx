@@ -1,9 +1,11 @@
 import { getLocations } from "@/lib/data";
 import { LocationForm } from "@/components/admin/location-form";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminUbicacionesPage() {
+  await requireAdmin();
   const locations = await getLocations();
   return (
     <div>
