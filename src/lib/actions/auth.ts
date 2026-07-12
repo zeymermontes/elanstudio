@@ -61,6 +61,52 @@ export async function signUpAction(
   };
 }
 
+export async function requestPasswordResetAction(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  if (!isSupabaseConfigured()) return { error: NOT_CONFIGURED };
+
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Ingresa tu correo electrónico." };
+
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+
+  // The recovery email (Supabase template) links to /auth/confirm?type=recovery,
+  // which sets the session and lands the user on /restablecer to pick a password.
+  await supabase.auth.resetPasswordForEmail(email);
+
+  // Always report success — never reveal whether an account exists for this email.
+  return {
+    success:
+      "Si existe una cuenta con ese correo, te enviamos un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada (y la carpeta de spam).",
+  };
+}
+
+export async function updatePasswordAction(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  if (!isSupabaseConfigured()) return { error: NOT_CONFIGURED };
+
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (password.length < 6)
+    return { error: "La contraseña debe tener al menos 6 caracteres." };
+  if (password !== confirm) return { error: "Las contraseñas no coinciden." };
+
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+
+  // Requires the recovery session established by /auth/confirm.
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: "No pudimos actualizar tu contraseña. El enlace pudo haber expirado; solicita uno nuevo." };
+
+  redirect("/cuenta");
+}
+
 export async function signOutAction() {
   const supabase = await createSupabaseServerClient();
   if (supabase) await supabase.auth.signOut();

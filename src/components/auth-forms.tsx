@@ -2,7 +2,13 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { signInAction, signUpAction, type AuthState } from "@/lib/actions/auth";
+import {
+  signInAction,
+  signUpAction,
+  requestPasswordResetAction,
+  updatePasswordAction,
+  type AuthState,
+} from "@/lib/actions/auth";
 
 const inputClass =
   "w-full rounded-xl border border-line bg-surface/70 px-4 py-3 text-sm text-ink outline-none transition-colors placeholder:text-ink-soft/60 focus:border-pink";
@@ -50,6 +56,14 @@ export function SignInForm({ next }: { next: string }) {
         placeholder="Contraseña"
         className={inputClass}
       />
+      <div className="text-right">
+        <Link
+          href="/recuperar"
+          className="text-xs text-ink-soft transition-colors hover:text-pink-strong hover:underline"
+        >
+          ¿Olvidaste tu contraseña?
+        </Link>
+      </div>
       <Submit label="Ingresar" />
       <p className="pt-2 text-center text-sm text-ink-soft">
         ¿Aún no tienes cuenta?{" "}
@@ -124,6 +138,76 @@ export function SignUpForm() {
           Ingresar
         </Link>
       </p>
+    </form>
+  );
+}
+
+export function RequestResetForm() {
+  const [state, action] = useActionState<AuthState, FormData>(
+    requestPasswordResetAction,
+    null,
+  );
+
+  // After a request, replace the form with a check-inbox note.
+  if (state?.success) {
+    return (
+      <div className="space-y-4 text-center">
+        <div className="rounded-xl bg-gold-soft/40 px-4 py-4 text-sm leading-relaxed text-ink">
+          {state.success}
+        </div>
+        <Link
+          href="/ingresar"
+          className="inline-flex rounded-full border border-gold/50 px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-ink transition-colors hover:border-gold hover:text-pink-strong"
+        >
+          Volver a ingresar
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <form action={action} className="space-y-4">
+      <ErrorNote error={state?.error} />
+      <input
+        name="email"
+        type="email"
+        required
+        placeholder="Correo electrónico"
+        className={inputClass}
+      />
+      <Submit label="Enviar enlace" />
+      <p className="pt-2 text-center text-sm text-ink-soft">
+        <Link href="/ingresar" className="text-pink-strong hover:underline">
+          Volver a ingresar
+        </Link>
+      </p>
+    </form>
+  );
+}
+
+export function UpdatePasswordForm() {
+  const [state, action] = useActionState<AuthState, FormData>(
+    updatePasswordAction,
+    null,
+  );
+  return (
+    <form action={action} className="space-y-4">
+      <ErrorNote error={state?.error} />
+      <input
+        name="password"
+        type="password"
+        required
+        placeholder="Nueva contraseña (mín. 6 caracteres)"
+        className={inputClass}
+      />
+      <input
+        name="confirm"
+        type="password"
+        required
+        placeholder="Confirma tu nueva contraseña"
+        className={inputClass}
+      />
+      <Submit label="Guardar contraseña" />
     </form>
   );
 }
