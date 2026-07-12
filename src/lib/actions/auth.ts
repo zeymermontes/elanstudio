@@ -100,9 +100,27 @@ export async function updatePasswordAction(
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: NOT_CONFIGURED };
 
-  // Requires the recovery session established by /auth/confirm.
+  // Requires the recovery session established by /auth/confirm. Distinguish a
+  // missing session (expired/invalid link) from an update Supabase rejected.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return {
+      error:
+        "Tu sesión de recuperación no está activa (el enlace pudo expirar o ya se usó). Solicita un enlace nuevo.",
+    };
+
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: "No pudimos actualizar tu contraseña. El enlace pudo haber expirado; solicita uno nuevo." };
+  if (error) {
+    console.error(
+      "[updatePassword]",
+      error.status,
+      error.code,
+      error.message,
+    );
+    return { error: `No pudimos actualizar tu contraseña: ${error.message}` };
+  }
 
   redirect("/cuenta");
 }
