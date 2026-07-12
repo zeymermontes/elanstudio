@@ -6,14 +6,6 @@
  */
 export const DEFAULT_UTC_OFFSET_MIN = -360;
 
-/** Options for the per-location UTC selector (México + zonas cercanas). */
-export const UTC_OFFSET_OPTIONS: { min: number; label: string }[] = [
-  { min: -480, label: "UTC-8 · Tijuana" },
-  { min: -420, label: "UTC-7 · Hermosillo / La Paz" },
-  { min: -360, label: "UTC-6 · Ciudad de México" },
-  { min: -300, label: "UTC-5 · Cancún" },
-];
-
 /** Compact "UTC-6" style label for a given offset in minutes. */
 export function offsetLabel(min: number): string {
   const sign = min < 0 ? "-" : "+";
@@ -22,6 +14,30 @@ export function offsetLabel(min: number): string {
   const m = abs % 60;
   return `UTC${sign}${h}${m ? `:${String(m).padStart(2, "0")}` : ""}`;
 }
+
+/** Every real-world UTC offset, in minutes (UTC-12 … UTC+14). */
+const ALL_UTC_OFFSET_MIN = [
+  -720, -660, -600, -570, -540, -480, -420, -360, -300, -240, -210, -180, -120,
+  -60, 0, 60, 120, 180, 210, 240, 270, 300, 330, 345, 360, 390, 420, 480, 525,
+  540, 570, 600, 630, 660, 720, 765, 780, 840,
+];
+
+/** Hints shown next to the offsets relevant to México. */
+const UTC_OFFSET_HINTS: Record<number, string> = {
+  [-480]: "Tijuana",
+  [-420]: "Hermosillo / La Paz",
+  [-360]: "Ciudad de México",
+  [-300]: "Cancún",
+};
+
+/** Options for the per-location UTC selector — the full list of offsets. */
+export const UTC_OFFSET_OPTIONS: { min: number; label: string }[] =
+  ALL_UTC_OFFSET_MIN.map((min) => ({
+    min,
+    label: UTC_OFFSET_HINTS[min]
+      ? `${offsetLabel(min)} · ${UTC_OFFSET_HINTS[min]}`
+      : offsetLabel(min),
+  }));
 
 /** Shift a UTC instant so its wall-clock reads in the given offset. */
 function atOffset(iso: string, offsetMin: number): Date {

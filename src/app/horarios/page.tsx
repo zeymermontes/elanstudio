@@ -35,10 +35,8 @@ function PartOfDay({
   );
 }
 
-export default async function HorariosPage() {
-  const slots = await getSchedule(7);
-
-  // Group by local calendar day (so morning/afternoon never split into two tabs).
+/** Build one tab per calendar day (with a morning/afternoon split) for a set of slots. */
+function buildDayTabs(slots: ScheduleSlot[]) {
   const byDay = new Map<string, ScheduleSlot[]>();
   for (const s of slots) {
     const key = dayKey(s.startsAt, s.utcOffsetMin);
@@ -47,7 +45,7 @@ export default async function HorariosPage() {
     byDay.set(key, list);
   }
 
-  const dayTabs = [...byDay.entries()].map(([date, daySlots]) => {
+  return [...byDay.entries()].map(([date, daySlots]) => {
     const morning = daySlots.filter(
       (s) => zonedHour(s.startsAt, s.utcOffsetMin) < 12,
     );
@@ -70,6 +68,41 @@ export default async function HorariosPage() {
       ),
     };
   });
+}
+
+export default async function HorariosPage() {
+  const slots = await getSchedule(7);
+
+  // Group by branch so users can filter the week by location.
+  const byLocation = new Map<
+    string,
+    { name: string; slots: ScheduleSlot[] }
+  >();
+  for (const s of slots) {
+    const id = s.location?.id ?? "__none";
+    const name = s.location?.name ?? "Sin sede";
+    const group = byLocation.get(id) ?? { name, slots: [] };
+    group.slots.push(s);
+    byLocation.set(id, group);
+  }
+  const locations = [...byLocation.entries()].sort((a, b) =>
+    a[1].name.localeCompare(b[1].name, "es"),
+  );
+
+  const dayTabs = buildDayTabs(slots);
+  const showLocationFilter = locations.length > 1;
+
+  // With more than one branch, wrap the day tabs in an outer "location" tab bar.
+  const locationTabs = showLocationFilter
+    ? [
+        { key: "todas", label: "Todas", content: <Tabs tabs={dayTabs} /> },
+        ...locations.map(([id, group]) => ({
+          key: id,
+          label: group.name,
+          content: <Tabs tabs={buildDayTabs(group.slots)} />,
+        })),
+      ]
+    : [];
 
   return (
     <div className="pb-10">
@@ -84,6 +117,8 @@ export default async function HorariosPage() {
           <p className="text-center text-sm text-ink-soft">
             Aún no hay clases publicadas. Vuelve pronto.
           </p>
+        ) : showLocationFilter ? (
+          <Tabs tabs={locationTabs} />
         ) : (
           <Tabs tabs={dayTabs} />
         )}
