@@ -3,7 +3,7 @@ import { Sun, Sunset } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs } from "@/components/admin/tabs";
 import { getSchedule } from "@/lib/data";
-import { formatDayLabel, formatTabDay, dayKey, cap } from "@/lib/format";
+import { formatDayLabel, formatTabDay, dayKey, zonedHour, cap } from "@/lib/format";
 import { ScheduleSlotItem } from "@/components/schedule-slot-item";
 import { encodeRef } from "@/lib/schedule-ref";
 import type { ScheduleSlot } from "@/lib/types";
@@ -41,24 +41,26 @@ export default async function HorariosPage() {
   // Group by local calendar day (so morning/afternoon never split into two tabs).
   const byDay = new Map<string, ScheduleSlot[]>();
   for (const s of slots) {
-    const key = dayKey(s.startsAt);
+    const key = dayKey(s.startsAt, s.utcOffsetMin);
     const list = byDay.get(key) ?? [];
     list.push(s);
     byDay.set(key, list);
   }
 
   const dayTabs = [...byDay.entries()].map(([date, daySlots]) => {
-    const morning = daySlots.filter((s) => new Date(s.startsAt).getHours() < 12);
+    const morning = daySlots.filter(
+      (s) => zonedHour(s.startsAt, s.utcOffsetMin) < 12,
+    );
     const afternoon = daySlots.filter(
-      (s) => new Date(s.startsAt).getHours() >= 12,
+      (s) => zonedHour(s.startsAt, s.utcOffsetMin) >= 12,
     );
     return {
       key: date,
-      label: formatTabDay(daySlots[0].startsAt),
+      label: formatTabDay(daySlots[0].startsAt, daySlots[0].utcOffsetMin),
       content: (
         <div>
           <h2 className="mb-6 font-serif text-2xl text-ink">
-            {cap(formatDayLabel(daySlots[0].startsAt))}
+            {cap(formatDayLabel(daySlots[0].startsAt, daySlots[0].utcOffsetMin))}
           </h2>
           <div className="space-y-9">
             <PartOfDay title="Mañana" icon={Sun} slots={morning} />

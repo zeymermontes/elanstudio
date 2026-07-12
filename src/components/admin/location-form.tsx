@@ -7,6 +7,7 @@ import {
   type FormState,
 } from "@/lib/actions/admin";
 import type { Location } from "@/lib/types";
+import { UTC_OFFSET_OPTIONS, DEFAULT_UTC_OFFSET_MIN } from "@/lib/format";
 import { Field, StatusBanner, SaveButton, inputClass } from "./form-ui";
 import { DeleteButton } from "./delete-button";
 import { ImageUploadField } from "./image-upload";
@@ -33,9 +34,24 @@ export function LocationForm({ location }: { location?: Location }) {
         <Field label="Dirección">
           <input name="address" defaultValue={location?.address} className={inputClass} />
         </Field>
-        <Field label="Horario">
-          <input name="hours" defaultValue={location?.hours} className={inputClass} placeholder="Lun–Vie 7:00–20:00" />
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Horario">
+            <input name="hours" defaultValue={location?.hours} className={inputClass} placeholder="Lun–Vie 7:00–20:00" />
+          </Field>
+          <Field label="Zona horaria (UTC)">
+            <select
+              name="utc_offset_minutes"
+              defaultValue={location?.utcOffsetMin ?? DEFAULT_UTC_OFFSET_MIN}
+              className={inputClass}
+            >
+              {UTC_OFFSET_OPTIONS.map((o) => (
+                <option key={o.min} value={o.min}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
         <Field label="Enlace de Google Maps (opcional)">
           <input
             name="map_url"

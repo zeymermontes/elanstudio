@@ -7,6 +7,7 @@
  */
 import { createSupabaseServerClient } from "./supabase/server";
 import { defaultSettings, type SiteSettings } from "./site";
+import { DEFAULT_UTC_OFFSET_MIN, zonedToUtc } from "./format";
 import {
   services as seedServices,
   classTypes as seedClassTypes,
@@ -104,6 +105,10 @@ export async function getLocations(): Promise<Location[]> {
     hours: l.hours ?? "",
     mapUrl: l.map_url ?? null,
     imageUrl: l.image_url ?? null,
+    utcOffsetMin:
+      typeof l.utc_offset_minutes === "number"
+        ? l.utc_offset_minutes
+        : DEFAULT_UTC_OFFSET_MIN,
   }));
 }
 
@@ -279,6 +284,8 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           capacity: s.capacity,
           booked: s.booked,
           spotsLeft: Math.max(0, s.capacity - s.booked),
+          utcOffsetMin:
+            locById.get(s.locationId)?.utcOffsetMin ?? DEFAULT_UTC_OFFSET_MIN,
         };
       })
       .filter((s): s is ScheduleSlot => s !== null)
@@ -333,7 +340,12 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
       if (!ct) continue;
 
       const mat = materialized.get(`${w.id}|${dateStr}`);
-      const startsAt = new Date(`${dateStr}T${w.startTime}:00`);
+      // Anchor the template's wall-clock start_time to the location's UTC
+      // offset, so the instant is fixed regardless of server/viewer timezone.
+      const offsetMin =
+        (w.locationId ? locById.get(w.locationId)?.utcOffsetMin : undefined) ??
+        DEFAULT_UTC_OFFSET_MIN;
+      const startsAt = zonedToUtc(dateStr, w.startTime, offsetMin);
 
       if (mat) {
         if (mat.status === "cancelled") continue;
@@ -352,6 +364,7 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           capacity: mat.capacity,
           booked: counts.get(mat.id) ?? 0,
           spotsLeft: Math.max(0, mat.capacity - (counts.get(mat.id) ?? 0)),
+          utcOffsetMin: offsetMin,
         });
       } else {
         const endsAt = new Date(startsAt.getTime() + w.durationMin * 60000);
@@ -365,6 +378,7 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           capacity: w.capacity,
           booked: 0,
           spotsLeft: w.capacity,
+          utcOffsetMin: offsetMin,
         });
       }
     }
@@ -385,6 +399,9 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
       capacity: s.capacity,
       booked: counts.get(s.id) ?? 0,
       spotsLeft: Math.max(0, s.capacity - (counts.get(s.id) ?? 0)),
+      utcOffsetMin:
+        (s.location_id ? locById.get(s.location_id)?.utcOffsetMin : undefined) ??
+        DEFAULT_UTC_OFFSET_MIN,
     });
   }
 

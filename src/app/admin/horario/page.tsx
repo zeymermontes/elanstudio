@@ -30,7 +30,7 @@ export default async function AdminHorarioPage() {
   // Group the computed schedule by local calendar day.
   const byDay = new Map<string, ScheduleSlot[]>();
   for (const s of schedule) {
-    const key = dayKey(s.startsAt);
+    const key = dayKey(s.startsAt, s.utcOffsetMin);
     const list = byDay.get(key) ?? [];
     list.push(s);
     byDay.set(key, list);
@@ -100,7 +100,7 @@ export default async function AdminHorarioPage() {
           {[...byDay.entries()].map(([day, daySlots]) => (
             <div key={day}>
               <h3 className="mb-3 font-serif text-xl text-ink">
-                {cap(formatDayLabel(daySlots[0].startsAt))}
+                {cap(formatDayLabel(daySlots[0].startsAt, daySlots[0].utcOffsetMin))}
               </h3>
               <div className="space-y-3">
                 {daySlots.map((s) => (
@@ -111,7 +111,7 @@ export default async function AdminHorarioPage() {
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="font-serif text-lg text-ink">
-                          {formatTime(s.startsAt)} · {s.classType.name}
+                          {formatTime(s.startsAt, s.utcOffsetMin)} · {s.classType.name}
                         </p>
                         <p className="text-xs text-ink-soft">
                           {s.coach?.name ?? "Sin coach"}

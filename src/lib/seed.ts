@@ -123,6 +123,7 @@ export const locations: Location[] = [
     hours: "Lun–Vie 6:00–21:00 · Sáb 8:00–14:00",
     mapUrl: null,
     imageUrl: null,
+    utcOffsetMin: -360,
   },
   {
     id: "loc-condesa",
@@ -132,6 +133,7 @@ export const locations: Location[] = [
     hours: "Lun–Vie 7:00–20:00 · Sáb 9:00–13:00",
     mapUrl: null,
     imageUrl: null,
+    utcOffsetMin: -360,
   },
 ];
 

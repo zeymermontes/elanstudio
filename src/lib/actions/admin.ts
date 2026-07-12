@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getProfile } from "@/lib/auth";
 import { decodeRef } from "@/lib/schedule-ref";
+import { zonedToUtc } from "@/lib/format";
 
 export type FormState = { ok?: boolean; error?: string } | null;
 
@@ -197,6 +198,7 @@ export async function saveLocationAction(
   if (!supabase) return { error: NOT_CONFIGURED };
 
   const id = str(fd, "id");
+  const offset = str(fd, "utc_offset_minutes");
   const row = {
     name: str(fd, "name"),
     address: str(fd, "address"),
@@ -204,6 +206,7 @@ export async function saveLocationAction(
     hours: str(fd, "hours"),
     map_url: str(fd, "map_url") || null,
     image_url: str(fd, "image_url") || null,
+    utc_offset_minutes: offset === "" ? -360 : Number(offset),
   };
 
   const { error } = id
@@ -321,6 +324,7 @@ export async function createSessionAction(
 
   const classTypeId = str(fd, "class_type_id");
   const startsAtLocal = str(fd, "starts_at"); // from <input type=datetime-local>
+  const locationId = str(fd, "location_id") || null;
   if (!classTypeId || !startsAtLocal)
     return { error: "Selecciona clase y fecha." };
 
@@ -331,7 +335,19 @@ export async function createSessionAction(
     .eq("id", classTypeId)
     .single();
 
-  const starts = new Date(startsAtLocal);
+  // Interpret the entered wall-clock time in the location's UTC offset.
+  let offsetMin = -360;
+  if (locationId) {
+    const { data: loc } = await supabase
+      .from("locations")
+      .select("utc_offset_minutes")
+      .eq("id", locationId)
+      .single();
+    if (typeof loc?.utc_offset_minutes === "number")
+      offsetMin = loc.utc_offset_minutes;
+  }
+  const [datePart, timePart] = startsAtLocal.split("T");
+  const starts = zonedToUtc(datePart, timePart, offsetMin);
   const duration = ct?.duration_min ?? 50;
   const ends = new Date(starts.getTime() + duration * 60000);
   const capacity = num(fd, "capacity") || ct?.default_capacity || 10;
@@ -339,7 +355,7 @@ export async function createSessionAction(
   const { error } = await supabase.from("class_sessions").insert({
     class_type_id: classTypeId,
     coach_id: str(fd, "coach_id") || null,
-    location_id: str(fd, "location_id") || null,
+    location_id: locationId,
     starts_at: starts.toISOString(),
     ends_at: ends.toISOString(),
     capacity,

@@ -32,7 +32,7 @@ export function ScheduleSlotItem({
         >
           <div className="text-center">
             <p className="font-serif text-xl text-pink-strong">
-              {formatTime(slot.startsAt)}
+              {formatTime(slot.startsAt, slot.utcOffsetMin)}
             </p>
             <p className="text-[0.65rem] uppercase tracking-[0.12em] text-ink-soft">
               {slot.classType.durationMin} min
@@ -105,7 +105,8 @@ function Modal({
         </button>
 
         <p className="text-[0.7rem] uppercase tracking-luxe text-gold">
-          {cap(formatDayLabel(slot.startsAt))} · {formatTime(slot.startsAt)}
+          {cap(formatDayLabel(slot.startsAt, slot.utcOffsetMin))} ·{" "}
+          {formatTime(slot.startsAt, slot.utcOffsetMin)}
         </p>
         <div className="mt-1.5 flex items-center gap-2.5">
           {slot.classType.imageUrl ? (

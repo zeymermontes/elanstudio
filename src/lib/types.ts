@@ -40,6 +40,8 @@ export type Location = {
   hours: string;
   mapUrl: string | null;
   imageUrl: string | null;
+  /** Fixed UTC offset in minutes (e.g. -360 = UTC-6). Anchors class times. */
+  utcOffsetMin: number;
 };
 
 export type Package = {
@@ -104,4 +106,6 @@ export type ScheduleSlot = {
   capacity: number;
   booked: number;
   spotsLeft: number;
+  /** UTC offset (minutes) of the slot's location — how to display its time. */
+  utcOffsetMin: number;
 };
