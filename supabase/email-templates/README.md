@@ -12,9 +12,16 @@ template, and set the suggested subject.
 | `change-email.html` | Change Email Address | `Confirma tu nuevo correo · ÉLANSTUDIO` |
 
 ## Notes
-- Leave the `{{ .ConfirmationURL }}` variables exactly as written — Supabase
-  replaces them with the real link. `change-email.html` also uses `{{ .Email }}`
-  (current) and `{{ .NewEmail }}` (new).
+- **You must paste each of these into the dashboard.** If a template is left at
+  its Supabase default, its link points at `/auth/v1/verify?...&redirect_to=<Site
+  URL>`, which drops the user on the home screen with the token in the URL hash
+  instead of routing through our `/auth/confirm` handler. (Symptom: clicking the
+  reset link just opens the home page.) These templates instead link to
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…`, which
+  establishes a real server session and lands the user on the right page
+  (`reset-password.html` → `/restablecer`).
+- `change-email.html` also uses `{{ .Email }}` (current) and `{{ .NewEmail }}`
+  (new); keep the `{{ .TokenHash }}` / `{{ .SiteURL }}` variables as written.
 - Fonts are web-safe (Georgia / Helvetica) because email clients don't reliably
   load Google Fonts; brand colors (pink `#e29aaa`/`#d6849a`, gold `#c7a86a`,
   bone `#f8f4ef`) are exact.

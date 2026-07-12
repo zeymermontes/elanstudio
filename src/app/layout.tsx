@@ -5,6 +5,7 @@ import { getSettings } from "@/lib/data";
 import { getProfile } from "@/lib/auth";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { RecoveryHandler } from "@/components/recovery-handler";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -65,6 +66,7 @@ export default async function RootLayout({
         <style dangerouslySetInnerHTML={{ __html: themeOverride }} />
       </head>
       <body className="min-h-full flex flex-col">
+        <RecoveryHandler />
         <SiteHeader studioName={settings.studioName} isAdmin={isStaff} />
         <main className="flex-1">{children}</main>
         <SiteFooter settings={settings} />
