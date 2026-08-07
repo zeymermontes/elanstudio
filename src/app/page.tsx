@@ -115,8 +115,10 @@ export default async function Home() {
                 strokeWidth={1.25}
                 className="mx-auto text-pink"
               />
-              <h3 className="mt-4 font-serif text-2xl text-ink">{v.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              {/* Titles commented out — the cards read as icon + line of copy.
+                  To bring them back, uncomment the h3 and set the <p> to mt-2. */}
+              {/* <h3 className="mt-4 font-serif text-2xl text-ink">{v.title}</h3> */}
+              <p className="mt-4 text-sm leading-relaxed text-ink-soft">
                 {v.desc}
               </p>
             </div>
