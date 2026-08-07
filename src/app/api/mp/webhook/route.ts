@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Payment } from "mercadopago";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { mpClient, MP_ACCESS_TOKEN } from "@/lib/mercadopago";
+import { mpClient, mpHeaders } from "@/lib/mercadopago";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -104,7 +104,7 @@ async function handlePayment(
 async function handlePreapproval(admin: SupabaseClient, preapprovalId: string) {
   const res = await fetch(
     `https://api.mercadopago.com/preapproval/${preapprovalId}`,
-    { headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` } },
+    { headers: mpHeaders() },
   );
   if (!res.ok) return;
   const pre = (await res.json()) as {
@@ -145,7 +145,7 @@ async function handleAuthorizedPayment(
 ) {
   const res = await fetch(
     `https://api.mercadopago.com/authorized_payments/${authorizedPaymentId}`,
-    { headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` } },
+    { headers: mpHeaders() },
   );
   if (!res.ok) return;
   const ap = (await res.json()) as {

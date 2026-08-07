@@ -39,6 +39,9 @@ The site **runs with no backend** — pages render from seed data in
 
 1. Get **TEST** credentials at https://www.mercadopago.com.mx/developers.
 2. Add to `.env.local`: `MP_ACCESS_TOKEN`, `NEXT_PUBLIC_MP_PUBLIC_KEY`.
+   Optionally `MP_INTEGRATOR_ID` — the certified integrator ID, sent as the
+   `X-Integrator-Id` header on every MP call. It identifies whoever built the
+   integration, so it stays the same even if the studio's MP account changes.
 3. Set `NEXT_PUBLIC_SITE_URL` (local: `http://localhost:3000`).
 4. One-time package payments use the **embedded Card Payment Brick** (in-page).
    The monthly unlimited plan uses **Suscripciones (preapproval)** — a one-time

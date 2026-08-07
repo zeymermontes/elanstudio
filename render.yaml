@@ -23,5 +23,8 @@ services:
         sync: false
       - key: NEXT_PUBLIC_MP_PUBLIC_KEY
         sync: false
+      # Not a secret: identifies the integration's developer, not the account.
+      - key: MP_INTEGRATOR_ID
+        value: dev_96ef27a377d611f19997d6613c0d9962
       - key: NEXT_PUBLIC_SITE_URL
         sync: false

@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   isMercadoPagoConfigured,
-  MP_ACCESS_TOKEN,
+  mpHeaders,
   siteUrl,
 } from "@/lib/mercadopago";
 
@@ -48,10 +48,7 @@ export async function startSubscriptionAction(
   try {
     const res = await fetch("https://api.mercadopago.com/preapproval", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-      },
+      headers: mpHeaders(true),
       body: JSON.stringify({
         reason: `${pkg.name} · ÉLANSTUDIO`,
         external_reference: sub.id,
@@ -122,10 +119,7 @@ export async function cancelSubscriptionAction(): Promise<CancelResult> {
       `https://api.mercadopago.com/preapproval/${sub.mp_preapproval_id}`,
       {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
-        },
+        headers: mpHeaders(true),
         body: JSON.stringify({ status: "cancelled" }),
       },
     );
