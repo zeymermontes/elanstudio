@@ -74,7 +74,10 @@ export function PromotionForm({
               type="number"
               min={1}
               max={kind === "percent" ? 100 : undefined}
-              step={kind === "percent" ? 1 : 10}
+              // Steps are counted from `min`, so a step of 10 would have made
+              // 650 invalid (the browser only accepts 1, 11, 21…). Percentages
+              // allow one decimal; pesos are whole.
+              step={kind === "percent" ? 0.1 : 1}
               defaultValue={promo?.value ?? (kind === "percent" ? 10 : 100)}
               required
               className={inputClass}
