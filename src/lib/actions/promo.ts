@@ -10,7 +10,12 @@ export type PromoCodeResult = {
   /** Shown under the field when the code can't be used. */
   error?: string;
   /** Present on success — what the member will be charged. */
-  applied?: { name: string; discountMxn: number; finalMxn: number };
+  applied?: {
+    name: string;
+    discountMxn: number;
+    finalMxn: number;
+    terms: string[];
+  };
 };
 
 /**
@@ -76,6 +81,7 @@ export async function applyPromoCodeAction(
       name: applied.promotion.name,
       discountMxn: applied.discountMxn,
       finalMxn: applied.finalMxn,
+      terms: applied.terms,
     },
   };
 }

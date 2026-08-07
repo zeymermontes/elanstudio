@@ -8,6 +8,12 @@
  * Scope is one-time packages only; recurring ones always resolve to no discount.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  formatDayLabel,
+  formatTime,
+  cap,
+  DEFAULT_UTC_OFFSET_MIN,
+} from "./format";
 import type { Package, Promotion } from "./types";
 
 /**
@@ -23,6 +29,8 @@ export type AppliedPromo = {
   discountMxn: number;
   /** What the member actually pays. */
   finalMxn: number;
+  /** Human-readable conditions, for the "Aplican restricciones" dialog. */
+  terms: string[];
 };
 
 /** Money rounded to centavos — avoids 1234.5600000000001 reaching the API. */
@@ -45,16 +53,82 @@ export function calcDiscount(
   return money(Math.min(raw, priceMxn));
 }
 
+/**
+ * Last day the promotion can be used, as a member would say it.
+ *
+ * A window ending at midnight expires as that day *begins*, so "vigente hasta
+ * el 17" would be wrong by a full day — name the previous day instead. Any
+ * other end time is spelled out, since it isn't obvious from the date alone.
+ */
+function endLabel(endsAt: string): string {
+  const local = new Date(
+    new Date(endsAt).getTime() + DEFAULT_UTC_OFFSET_MIN * 60000,
+  );
+  if (local.getUTCHours() === 0 && local.getUTCMinutes() === 0) {
+    const lastDay = new Date(new Date(endsAt).getTime() - 60000).toISOString();
+    return cap(formatDayLabel(lastDay));
+  }
+  return `${cap(formatDayLabel(endsAt))} a las ${formatTime(endsAt)}`;
+}
+
+/**
+ * The promotion's conditions in plain Spanish, for the asterisk dialog.
+ *
+ * Derived from the configured fields rather than typed by hand, so the terms
+ * can never drift from what the checkout actually enforces. Deliberately omits
+ * the code itself — the terms are shown publicly on /paquetes.
+ */
+export function promoTerms(promo: Promotion, scoped = false): string[] {
+  const terms: string[] = [];
+
+  const from = promo.startsAt ? cap(formatDayLabel(promo.startsAt)) : null;
+  const to = promo.endsAt ? endLabel(promo.endsAt) : null;
+  // The time part ("6:00 p.m.") already ends in a period — don't add a second.
+  const stop = (s: string) => (s.endsWith(".") ? s : `${s}.`);
+  if (from && to) terms.push(stop(`Vigente del ${from} al ${to}`));
+  else if (to) terms.push(stop(`Vigente hasta el ${to}`));
+  else if (from) terms.push(stop(`Vigente a partir del ${from}`));
+
+  if (promo.newClientsOnly) {
+    terms.push("Válida únicamente en tu primera compra.");
+  }
+  if (scoped) {
+    terms.push("Aplica solo a los paquetes participantes.");
+  }
+  if (promo.maxRedemptions != null) {
+    terms.push(`Limitada a las primeras ${promo.maxRedemptions} compras.`);
+  }
+  if (promo.maxPerUser != null) {
+    terms.push(
+      promo.maxPerUser === 1
+        ? "Un uso por persona."
+        : `Máximo ${promo.maxPerUser} usos por persona.`,
+    );
+  }
+
+  // Always true, and worth stating: both are enforced in resolvePromotion.
+  terms.push("No acumulable con otras promociones.");
+  terms.push("No aplica al plan mensual ilimitado.");
+
+  return terms;
+}
+
 /** Applies a promotion to a price, or null when the result isn't chargeable. */
 export function applyPromotion(
   promo: Promotion,
   priceMxn: number,
+  scoped = false,
 ): AppliedPromo | null {
   const discountMxn = calcDiscount(promo.kind, promo.value, priceMxn);
   if (discountMxn <= 0) return null;
   const finalMxn = money(priceMxn - discountMxn);
   if (finalMxn < MIN_CHARGE_MXN) return null;
-  return { promotion: promo, discountMxn, finalMxn };
+  return {
+    promotion: promo,
+    discountMxn,
+    finalMxn,
+    terms: promoTerms(promo, scoped),
+  };
 }
 
 type PromoRow = Record<string, unknown>;
@@ -170,10 +244,10 @@ export async function resolvePromotion(
     const promo = mapPromotion(row);
 
     // Scope: no linked packages = applies to all one-time packages.
-    const scoped = (row.promotion_packages ?? []) as { package_id: string }[];
-    if (scoped.length && !scoped.some((s) => s.package_id === pkg.id)) continue;
+    const scope = (row.promotion_packages ?? []) as { package_id: string }[];
+    if (scope.length && !scope.some((s) => s.package_id === pkg.id)) continue;
 
-    const candidate = applyPromotion(promo, pkg.priceMxn);
+    const candidate = applyPromotion(promo, pkg.priceMxn, scope.length > 0);
     if (!candidate) continue;
     // Skip the DB round-trips below if it can't beat what we already have.
     if (best && candidate.discountMxn <= best.discountMxn) continue;

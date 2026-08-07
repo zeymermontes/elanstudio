@@ -110,6 +110,7 @@ export default async function ComprarPage({
                       name: promo.promotion.name,
                       discountMxn: promo.discountMxn,
                       finalMxn: promo.finalMxn,
+                      terms: promo.terms,
                     }
                   : null
               }

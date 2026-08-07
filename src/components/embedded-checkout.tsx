@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { initMercadoPago, CardPayment } from "@mercadopago/sdk-react";
 import { applyPromoCodeAction } from "@/lib/actions/promo";
 import { formatMxn } from "@/lib/format";
+import { PromoTerms } from "@/components/promo-terms";
 
 /** What the member is getting off, as resolved on the server. */
 export type CheckoutPromo = {
   name: string;
   discountMxn: number;
   finalMxn: number;
+  terms: string[];
 };
 
 /**
@@ -104,6 +106,9 @@ export function EmbeddedCheckout({
             <span>Total</span>
             <span>{formatMxn(promo.finalMxn)}</span>
           </div>
+          <p className="mt-2">
+            <PromoTerms name={promo.name} terms={promo.terms} />
+          </p>
         </div>
       ) : null}
 

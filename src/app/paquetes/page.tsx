@@ -11,6 +11,7 @@ import {
   type AppliedPromo,
 } from "@/lib/promotions";
 import { formatMxn } from "@/lib/format";
+import { PromoTerms } from "@/components/promo-terms";
 
 export const metadata: Metadata = { title: "Paquetes" };
 
@@ -70,12 +71,20 @@ export default async function PaquetesPage() {
                   ) : null}
                 </div>
                 {promo ? (
-                  <p className="mt-1.5 flex items-center gap-2 text-sm text-pink-strong">
-                    <span className="rounded-full bg-pink px-2 py-0.5 text-[0.65rem] font-medium tracking-wide text-white">
-                      {promoBadge(promo.promotion)}
-                    </span>
-                    {promo.promotion.name}
-                  </p>
+                  <>
+                    <p className="mt-1.5 flex items-center gap-2 text-sm text-pink-strong">
+                      <span className="rounded-full bg-pink px-2 py-0.5 text-[0.65rem] font-medium tracking-wide text-white">
+                        {promoBadge(promo.promotion)}
+                      </span>
+                      {promo.promotion.name}
+                    </p>
+                    <p className="mt-1">
+                      <PromoTerms
+                        name={promo.promotion.name}
+                        terms={promo.terms}
+                      />
+                    </p>
+                  </>
                 ) : null}
               </div>
 
