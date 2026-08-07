@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { AtSign, MessageCircle, Mail } from "lucide-react";
-import { navLinks, defaultSettings, type SiteSettings } from "@/lib/site";
+import {
+  navLinks,
+  defaultSettings,
+  whatsappUrl,
+  type SiteSettings,
+} from "@/lib/site";
 
 export function SiteFooter({
   settings = defaultSettings,
@@ -8,6 +13,7 @@ export function SiteFooter({
   settings?: SiteSettings;
 }) {
   const s = settings;
+  const waUrl = whatsappUrl(s.whatsapp);
   return (
     <footer className="mt-24 border-t border-line/70 bg-cream/50">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-2 md:grid-cols-4">
@@ -54,8 +60,22 @@ export function SiteFooter({
             Contacto
           </p>
           <ul className="space-y-3 text-sm text-ink-soft">
-            <li className="flex items-center gap-2">
-              <MessageCircle size={15} strokeWidth={1.5} /> {s.whatsapp}
+            <li>
+              {waUrl ? (
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Escríbenos por WhatsApp al ${s.whatsapp}`}
+                  className="flex items-center gap-2 transition-colors hover:text-pink-strong"
+                >
+                  <MessageCircle size={15} strokeWidth={1.5} /> {s.whatsapp}
+                </a>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <MessageCircle size={15} strokeWidth={1.5} /> {s.whatsapp}
+                </span>
+              )}
             </li>
             <li className="flex items-center gap-2">
               <Mail size={15} strokeWidth={1.5} /> {s.email}
