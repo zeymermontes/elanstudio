@@ -3,6 +3,7 @@ import { Payment } from "mercadopago";
 import { getCurrentUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { mpClient } from "@/lib/mercadopago";
+import { resolvePromotion } from "@/lib/promotions";
 
 /**
  * Processes an embedded (Bricks) one-time card payment. Receives the tokenized
@@ -23,6 +24,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const packageId: string | undefined = body?.packageId;
+  const promoCode: string | null = body?.promoCode ?? null;
   const formData = body?.formData;
   if (!packageId || !formData?.token) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
@@ -45,14 +47,36 @@ export async function POST(req: NextRequest) {
     ? new Date(Date.now() + pkg.validity_days * 86400000).toISOString()
     : null;
 
+  // Resolve the discount here rather than trusting anything the browser sent —
+  // the client only supplies the code, never the price.
+  const listPrice = Number(pkg.price_mxn);
+  const applied = await resolvePromotion(admin, {
+    pkg: {
+      id: pkg.id,
+      name: pkg.name,
+      description: "",
+      credits: pkg.credits,
+      priceMxn: listPrice,
+      validityDays: pkg.validity_days ?? 30,
+      featured: false,
+      active: true,
+      recurring: Boolean(pkg.recurring),
+    },
+    userId: user.id,
+    code: promoCode,
+  });
+  const chargeMxn = applied?.finalMxn ?? listPrice;
+
   const { data: purchase } = await admin
     .from("purchases")
     .insert({
       user_id: user.id,
       package_id: pkg.id,
-      amount_mxn: pkg.price_mxn,
+      amount_mxn: chargeMxn,
       credits: pkg.credits,
       status: "pending",
+      promotion_id: applied?.promotion.id ?? null,
+      discount_mxn: applied?.discountMxn ?? 0,
     })
     .select("id")
     .single();
@@ -61,7 +85,7 @@ export async function POST(req: NextRequest) {
   try {
     const payment = await new Payment(client).create({
       body: {
-        transaction_amount: Number(pkg.price_mxn),
+        transaction_amount: chargeMxn,
         token: formData.token,
         payment_method_id: formData.payment_method_id,
         issuer_id: formData.issuer_id,

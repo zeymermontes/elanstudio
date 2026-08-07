@@ -4,7 +4,13 @@ import { CalendarDays, Package, Users, CreditCard, Cake, Gift } from "lucide-rea
 import { requireStaff } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUpcomingBirthdays, getBirthdayBookings } from "@/lib/admin-data";
-import { formatMxn, formatDayLabel, formatTime, cap } from "@/lib/format";
+import {
+  formatMxn,
+  formatDayLabel,
+  formatCivilDate,
+  formatTime,
+  cap,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -148,7 +154,7 @@ export default async function AdminDashboard() {
                   {b.name}
                 </Link>
                 <span className="text-sm text-ink-soft">
-                  {cap(formatDayLabel(b.date))} · cumple {b.turningAge} ·{" "}
+                  {cap(formatCivilDate(b.date))} · cumple {b.turningAge} ·{" "}
                   <span className="text-gold">{daysLabel(b.daysUntil)}</span>
                 </span>
               </li>

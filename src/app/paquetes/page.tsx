@@ -3,12 +3,27 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { getPackages } from "@/lib/data";
+import { getCurrentUser } from "@/lib/auth";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  resolvePromotionsFor,
+  promoBadge,
+  type AppliedPromo,
+} from "@/lib/promotions";
 import { formatMxn } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Paquetes" };
 
 export default async function PaquetesPage() {
   const packages = await getPackages();
+
+  // Self-applying promotions for whoever is looking. Resolved per-visitor so a
+  // member who already bought doesn't see a "new clients" price they can't get.
+  const admin = createSupabaseAdminClient();
+  const user = await getCurrentUser();
+  const promos: Map<string, AppliedPromo> = admin
+    ? await resolvePromotionsFor(admin, packages, user?.id ?? null)
+    : new Map();
 
   return (
     <div className="pb-10">
@@ -21,6 +36,7 @@ export default async function PaquetesPage() {
       <div className="mx-auto grid max-w-6xl gap-6 px-5 sm:grid-cols-2 lg:grid-cols-4">
         {packages.map((p) => {
           const unlimited = p.credits >= 999;
+          const promo = promos.get(p.id);
           return (
             <article
               key={p.id}
@@ -39,12 +55,27 @@ export default async function PaquetesPage() {
                 {p.description}
               </p>
 
-              <div className="my-6 flex items-baseline gap-1.5">
-                <span className="font-serif text-4xl text-pink-strong">
-                  {formatMxn(p.priceMxn)}
-                </span>
-                {p.recurring ? (
-                  <span className="text-sm text-ink-soft">/ mes</span>
+              <div className="my-6">
+                <div className="flex items-baseline gap-1.5">
+                  {promo ? (
+                    <span className="font-serif text-xl text-ink-soft line-through">
+                      {formatMxn(p.priceMxn)}
+                    </span>
+                  ) : null}
+                  <span className="font-serif text-4xl text-pink-strong">
+                    {formatMxn(promo?.finalMxn ?? p.priceMxn)}
+                  </span>
+                  {p.recurring ? (
+                    <span className="text-sm text-ink-soft">/ mes</span>
+                  ) : null}
+                </div>
+                {promo ? (
+                  <p className="mt-1.5 flex items-center gap-2 text-sm text-pink-strong">
+                    <span className="rounded-full bg-pink px-2 py-0.5 text-[0.65rem] font-medium tracking-wide text-white">
+                      {promoBadge(promo.promotion)}
+                    </span>
+                    {promo.promotion.name}
+                  </p>
                 ) : null}
               </div>
 

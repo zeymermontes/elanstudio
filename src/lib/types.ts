@@ -56,6 +56,30 @@ export type Package = {
   recurring: boolean; // true = monthly subscription, false = one-time credits
 };
 
+/**
+ * A discount on one-time packages. Resolved server-side only — see
+ * src/lib/promotions.ts. Never send one with a `code` to the browser.
+ */
+export type Promotion = {
+  id: string;
+  name: string; // shown to the member, e.g. "Buen Fin"
+  code: string | null; // null = applies on its own
+  kind: "percent" | "amount";
+  value: number; // 20 = 20% off, or 200 = $200 MXN off
+  startsAt: string | null; // ISO; null = live immediately
+  endsAt: string | null; // ISO; null = until deactivated
+  newClientsOnly: boolean;
+  maxRedemptions: number | null; // null = uncapped
+  maxPerUser: number | null;
+  active: boolean;
+};
+
+/** A promotion plus the packages it is limited to (empty = all). */
+export type PromotionWithScope = Promotion & {
+  packageIds: string[];
+  redemptions: number;
+};
+
 export type ClassSession = {
   id: string;
   classTypeId: string;

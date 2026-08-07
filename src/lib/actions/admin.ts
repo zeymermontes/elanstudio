@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getProfile } from "@/lib/auth";
 import { decodeRef } from "@/lib/schedule-ref";
-import { zonedToUtc } from "@/lib/format";
+import { zonedToUtc, DEFAULT_UTC_OFFSET_MIN } from "@/lib/format";
 
 export type FormState = { ok?: boolean; error?: string } | null;
 
@@ -530,5 +530,120 @@ export async function coverCoachAction(
 
   revalidatePath("/admin/horario");
   revalidatePath("/horarios");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Promotions
+// ---------------------------------------------------------------------------
+
+/** Optional positive integer field — empty means "no cap". */
+function optInt(fd: FormData, k: string): number | null {
+  const raw = str(fd, k);
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+}
+
+/**
+ * A datetime-local input has no timezone. Interpreting it in the server's zone
+ * would drift the window against the class times, which are anchored to the
+ * studio's UTC offset — so reuse the same conversion the schedule uses.
+ */
+function optDate(fd: FormData, k: string): string | null {
+  const raw = str(fd, k);
+  if (!raw) return null;
+  const [date, time = "00:00"] = raw.split("T");
+  return zonedToUtc(date, time, DEFAULT_UTC_OFFSET_MIN).toISOString();
+}
+
+export async function savePromotionAction(
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+
+  const name = str(fd, "name");
+  if (!name) return { error: "Ponle un nombre a la promoción." };
+
+  const value = num(fd, "value");
+  if (!(value > 0)) return { error: "El descuento debe ser mayor a cero." };
+
+  const kind = str(fd, "kind") === "amount" ? "amount" : "percent";
+  if (kind === "percent" && value > 100) {
+    return { error: "Un porcentaje no puede pasar de 100." };
+  }
+
+  const startsAt = optDate(fd, "starts_at");
+  const endsAt = optDate(fd, "ends_at");
+  if (startsAt && endsAt && endsAt <= startsAt) {
+    return { error: "La fecha de fin debe ser posterior a la de inicio." };
+  }
+
+  const row = {
+    name,
+    // Codes are matched case-insensitively; store them uppercase so the admin
+    // list reads consistently.
+    code: str(fd, "code").toUpperCase() || null,
+    kind,
+    value,
+    starts_at: startsAt,
+    ends_at: endsAt,
+    new_clients_only: fd.get("new_clients_only") === "on",
+    max_redemptions: optInt(fd, "max_redemptions"),
+    max_per_user: optInt(fd, "max_per_user"),
+    active: str(fd, "active") !== "false",
+  };
+
+  const id = str(fd, "id");
+  const { data: saved, error } = id
+    ? await supabase
+        .from("promotions")
+        .update(row)
+        .eq("id", id)
+        .select("id")
+        .single()
+    : await supabase.from("promotions").insert(row).select("id").single();
+
+  if (error) {
+    // The unique index on upper(code) is the likeliest failure here.
+    return {
+      error: error.code === "23505"
+        ? "Ya existe otra promoción con ese código."
+        : error.message,
+    };
+  }
+
+  // Scope: replace the package links wholesale. No rows = applies to all.
+  const promotionId = saved.id as string;
+  const packageIds = fd.getAll("package_ids").map(String).filter(Boolean);
+
+  await supabase
+    .from("promotion_packages")
+    .delete()
+    .eq("promotion_id", promotionId);
+
+  if (packageIds.length) {
+    const { error: linkError } = await supabase
+      .from("promotion_packages")
+      .insert(
+        packageIds.map((package_id) => ({ promotion_id: promotionId, package_id })),
+      );
+    if (linkError) return { error: linkError.message };
+  }
+
+  revalidatePath("/admin/promociones");
+  revalidatePath("/paquetes");
+  return { ok: true };
+}
+
+export async function deletePromotionAction(id: string): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  const { error } = await supabase.from("promotions").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/promociones");
+  revalidatePath("/paquetes");
   return { ok: true };
 }

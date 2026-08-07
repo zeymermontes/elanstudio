@@ -4,6 +4,8 @@
  * gated by requireAdmin in the admin layout.
  */
 import { createSupabaseAdminClient } from "./supabase/admin";
+import { DEFAULT_UTC_OFFSET_MIN, dayKey } from "./format";
+import type { PromotionWithScope } from "./types";
 
 export type MemberRow = {
   id: string;
@@ -242,25 +244,36 @@ export async function getUpcomingBirthdays(
     .select("id, full_name, birth_date")
     .not("birth_date", "is", null);
 
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // A birthday is a civil date, not an instant, so all of this is done in UTC
+  // and only "today" is anchored to the studio's offset. Building the dates in
+  // the server's local zone instead would land every birthday a day early once
+  // deployed — Render runs in UTC, a developer's machine doesn't.
+  const nowLocal = new Date(Date.now() + DEFAULT_UTC_OFFSET_MIN * 60000);
+  const thisYear = nowLocal.getUTCFullYear();
+  const today = Date.UTC(
+    thisYear,
+    nowLocal.getUTCMonth(),
+    nowLocal.getUTCDate(),
+  );
   const out: Birthday[] = [];
 
   for (const p of data ?? []) {
     const [yy, mm, dd] = String(p.birth_date).split("-").map(Number);
     if (!mm || !dd) continue;
-    let next = new Date(today.getFullYear(), mm - 1, dd);
-    if (next < today) next = new Date(today.getFullYear() + 1, mm - 1, dd);
-    const daysUntil = Math.round(
-      (next.getTime() - today.getTime()) / 86400000,
-    );
+    let year = thisYear;
+    let next = Date.UTC(year, mm - 1, dd);
+    if (next < today) {
+      year += 1;
+      next = Date.UTC(year, mm - 1, dd);
+    }
+    const daysUntil = Math.round((next - today) / 86400000);
     if (daysUntil > withinDays) continue;
     out.push({
       id: p.id,
       name: p.full_name || "Miembro",
       daysUntil,
-      turningAge: next.getFullYear() - yy,
-      date: next.toISOString(),
+      turningAge: year - yy,
+      date: new Date(next).toISOString(),
     });
   }
   return out.sort((a, b) => a.daysUntil - b.daysUntil);
@@ -301,9 +314,15 @@ export async function getBirthdayBookings(
     bmap.set(p.id, { name: p.full_name || "Miembro", month: m, day: d });
   }
 
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const max = today.getTime() + withinDays * 86400000;
+  // Same reasoning as getUpcomingBirthdays: anchor "today" to the studio's
+  // offset rather than the server's clock.
+  const nowLocal = new Date(Date.now() + DEFAULT_UTC_OFFSET_MIN * 60000);
+  const today = Date.UTC(
+    nowLocal.getUTCFullYear(),
+    nowLocal.getUTCMonth(),
+    nowLocal.getUTCDate(),
+  );
+  const max = today + withinDays * 86400000;
   const out: BirthdayBooking[] = [];
 
   for (const b of bookings) {
@@ -318,10 +337,13 @@ export async function getBirthdayBookings(
       | null;
     const session = Array.isArray(cs) ? cs[0] : cs;
     if (!session?.starts_at) continue;
-    const sd = new Date(session.starts_at);
-    const t = sd.getTime();
-    if (t < today.getTime() || t > max) continue;
-    if (sd.getMonth() + 1 === bd.month && sd.getDate() === bd.day) {
+    const t = new Date(session.starts_at).getTime();
+    if (t < today || t > max) continue;
+    // Compare the class's wall-clock date at the studio, not the server's: a
+    // 7pm CDMX class is already the next day in UTC, which would match the
+    // wrong birthday.
+    const [, sm, sd] = dayKey(session.starts_at).split("-").map(Number);
+    if (sm === bd.month && sd === bd.day) {
       out.push({
         name: bd.name,
         className: firstName(session.class_types as never) || "Clase",
@@ -522,4 +544,50 @@ export async function getSessionRoster(
     capacity: s.capacity,
     roster,
   };
+}
+
+/**
+ * Every promotion with its package scope and redemption count, for the admin
+ * screen. Redemptions count pending + approved purchases, matching how the
+ * caps are enforced in resolvePromotion.
+ */
+export async function listPromotions(): Promise<PromotionWithScope[]> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return [];
+
+  const [{ data: promos }, { data: counts }] = await Promise.all([
+    admin
+      .from("promotions")
+      .select("*, promotion_packages(package_id)")
+      .order("created_at", { ascending: false }),
+    admin
+      .from("purchases")
+      .select("promotion_id")
+      .not("promotion_id", "is", null)
+      .in("status", ["pending", "approved"]),
+  ]);
+
+  const used = new Map<string, number>();
+  for (const c of counts ?? []) {
+    const id = c.promotion_id as string;
+    used.set(id, (used.get(id) ?? 0) + 1);
+  }
+
+  return (promos ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    code: p.code || null,
+    kind: p.kind,
+    value: Number(p.value ?? 0),
+    startsAt: p.starts_at ?? null,
+    endsAt: p.ends_at ?? null,
+    newClientsOnly: Boolean(p.new_clients_only),
+    maxRedemptions: p.max_redemptions ?? null,
+    maxPerUser: p.max_per_user ?? null,
+    active: Boolean(p.active),
+    packageIds: (p.promotion_packages ?? []).map(
+      (s: { package_id: string }) => s.package_id,
+    ),
+    redemptions: used.get(p.id) ?? 0,
+  }));
 }

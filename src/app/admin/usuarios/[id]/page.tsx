@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Sparkles, CalendarCheck } from "lucide-react";
 import { getMemberDetail } from "@/lib/admin-data";
-import { formatDayLabel, formatTime, cap } from "@/lib/format";
+import { formatDayLabel, formatCivilDate, formatTime, cap } from "@/lib/format";
 import { requireAdmin } from "@/lib/auth";
 import {
   AdjustCreditsForm,
@@ -70,7 +70,7 @@ export default async function UsuarioDetailPage({
           <p className="mt-1 text-sm text-ink-soft">
             {m.email}
             {m.phone ? ` · ${m.phone}` : ""}
-            {m.birthDate ? ` · 🎂 ${cap(formatDayLabel(m.birthDate))}` : ""}
+            {m.birthDate ? ` · 🎂 ${cap(formatCivilDate(m.birthDate))}` : ""}
             {m.role === "admin" ? " · admin" : ""}
           </p>
         </div>

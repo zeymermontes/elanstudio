@@ -5,6 +5,8 @@ import { ArrowLeft, Check } from "lucide-react";
 import { getPackageById } from "@/lib/data";
 import { getCurrentUser } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { resolvePromotion } from "@/lib/promotions";
 import { formatMxn } from "@/lib/format";
 import { EmbeddedCheckout } from "@/components/embedded-checkout";
 import { SubscribeButton } from "@/components/subscribe-button";
@@ -20,9 +22,11 @@ export default async function ComprarPage({
   const { id } = await params;
 
   // Must be signed in to buy.
+  let userId: string | null = null;
   if (isSupabaseConfigured()) {
     const user = await getCurrentUser();
     if (!user) redirect(`/ingresar?next=/comprar/${id}`);
+    userId = user.id;
   }
 
   const pkg = await getPackageById(id);
@@ -30,6 +34,13 @@ export default async function ComprarPage({
 
   const unlimited = pkg.credits >= 999;
   const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ?? "";
+
+  // Self-applying promotion, if this member qualifies for one. Codes are
+  // handled inside the checkout; both are re-resolved server-side when charging.
+  const admin = createSupabaseAdminClient();
+  const promo = admin
+    ? await resolvePromotion(admin, { pkg, userId })
+    : null;
 
   return (
     <div className="mx-auto max-w-xl px-5 py-14">
@@ -48,13 +59,21 @@ export default async function ComprarPage({
         <h1 className="mt-1 font-serif text-3xl text-ink">{pkg.name}</h1>
         <p className="mt-1 text-sm text-ink-soft">{pkg.description}</p>
         <div className="mt-4 flex items-baseline gap-2">
+          {promo ? (
+            <span className="font-serif text-2xl text-ink-soft line-through">
+              {formatMxn(pkg.priceMxn)}
+            </span>
+          ) : null}
           <span className="font-serif text-4xl text-pink-strong">
-            {formatMxn(pkg.priceMxn)}
+            {formatMxn(promo?.finalMxn ?? pkg.priceMxn)}
           </span>
           {pkg.recurring ? (
             <span className="text-sm text-ink-soft">/ mes</span>
           ) : null}
         </div>
+        {promo ? (
+          <p className="mt-1 text-sm text-pink-strong">{promo.promotion.name}</p>
+        ) : null}
         <ul className="mt-4 space-y-1.5 text-sm text-ink-soft">
           <li className="flex items-center gap-2">
             <Check size={15} strokeWidth={1.5} className="text-gold" />
@@ -85,6 +104,15 @@ export default async function ComprarPage({
               packageId={pkg.id}
               amount={pkg.priceMxn}
               publicKey={publicKey}
+              initialPromo={
+                promo
+                  ? {
+                      name: promo.promotion.name,
+                      discountMxn: promo.discountMxn,
+                      finalMxn: promo.finalMxn,
+                    }
+                  : null
+              }
             />
           </div>
         )}

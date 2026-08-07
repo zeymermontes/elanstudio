@@ -58,6 +58,19 @@ export function zonedToUtc(
   return new Date(Date.UTC(y, mo - 1, d, h, mi) - offsetMin * 60000);
 }
 
+/**
+ * "YYYY-MM-DDTHH:mm" for a <input type="datetime-local">, read in the studio's
+ * offset. The inverse of zonedToUtc, so an admin sees back the same wall time
+ * they typed regardless of where the server runs.
+ */
+export function toDateTimeLocal(
+  iso: string | null,
+  offsetMin = DEFAULT_UTC_OFFSET_MIN,
+): string {
+  if (!iso) return "";
+  return atOffset(iso, offsetMin).toISOString().slice(0, 16);
+}
+
 /** Wall-clock hour (0-23) of an instant at the given offset. */
 export function zonedHour(iso: string, offsetMin = DEFAULT_UTC_OFFSET_MIN): number {
   return atOffset(iso, offsetMin).getUTCHours();
@@ -81,6 +94,24 @@ export function formatDayLabel(
     month: "long",
     timeZone: "UTC",
   }).format(atOffset(iso, offsetMin));
+}
+
+/**
+ * Format a civil date — a birthday, not an instant.
+ *
+ * A birthday has no time of day, so it must NOT be shifted by a UTC offset the
+ * way formatDayLabel shifts class times: subtracting six hours from a bare date
+ * lands it on the previous day. Accepts "YYYY-MM-DD" or an ISO instant that is
+ * already UTC midnight.
+ */
+export function formatCivilDate(value: string): string {
+  const iso = value.length === 10 ? `${value}T00:00:00Z` : value;
+  return new Intl.DateTimeFormat("es-MX", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(iso));
 }
 
 export function formatTime(

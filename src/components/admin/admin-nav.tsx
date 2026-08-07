@@ -15,6 +15,7 @@ import {
   ClipboardCheck,
   CreditCard,
   Tag,
+  Percent,
 } from "lucide-react";
 import type { Role } from "@/lib/auth";
 
@@ -37,6 +38,7 @@ const items: Item[] = [
   { href: "/admin/clases", label: "Clases", icon: Dumbbell, roles: ADMIN },
   { href: "/admin/horario", label: "Horario", icon: CalendarDays, roles: ADMIN },
   { href: "/admin/paquetes", label: "Paquetes", icon: Package, roles: ADMIN },
+  { href: "/admin/promociones", label: "Promociones", icon: Percent, roles: ADMIN },
   { href: "/admin/usuarios", label: "Usuarios", icon: UserCircle, roles: ADMIN },
   { href: "/admin/coaches", label: "Coaches", icon: Users, roles: ADMIN },
   { href: "/admin/ubicaciones", label: "Ubicaciones", icon: MapPin, roles: ADMIN },
