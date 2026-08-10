@@ -20,6 +20,10 @@ export function PromoTerms({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 
+  // Nothing was configured, so there are no restrictions to disclose. Showing
+  // an asterisk that opens an empty box would be worse than showing nothing.
+  if (terms.length === 0) return null;
+
   return (
     <>
       <button
@@ -38,7 +42,10 @@ export function PromoTerms({
         onClick={(e) => {
           if (e.target === ref.current) ref.current?.close();
         }}
-        className="w-[min(30rem,calc(100vw-2.5rem))] rounded-2xl bg-surface p-0 text-ink shadow-soft backdrop:bg-ink/40 backdrop:backdrop-blur-[2px]"
+        // m-auto is load-bearing: a modal <dialog> centres itself with
+        // `margin: auto`, and Tailwind's reset zeroes every margin — which is
+        // what pins the box to the top-left corner without it.
+        className="m-auto w-[min(30rem,calc(100vw-2.5rem))] rounded-2xl bg-surface p-0 text-ink shadow-soft backdrop:bg-ink/40 backdrop:backdrop-blur-[2px]"
       >
         <div className="px-7 py-6">
           <div className="flex items-start justify-between gap-4">
@@ -74,11 +81,6 @@ export function PromoTerms({
               </li>
             ))}
           </ul>
-
-          <p className="mt-5 border-t border-line pt-4 text-xs leading-relaxed text-ink-soft">
-            El descuento se aplica al momento de pagar. Si tienes dudas,
-            escríbenos y con gusto te ayudamos.
-          </p>
         </div>
       </dialog>
     </>

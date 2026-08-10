@@ -106,10 +106,10 @@ export function promoTerms(promo: Promotion, scoped = false): string[] {
     );
   }
 
-  // Always true, and worth stating: both are enforced in resolvePromotion.
-  terms.push("No acumulable con otras promociones.");
-  terms.push("No aplica al plan mensual ilimitado.");
-
+  // Only what the admin actually configured. Boilerplate ("no acumulable",
+  // "no aplica al plan mensual") is true but reads as fine print nobody set,
+  // and an empty list is the signal that there is nothing to disclose — the
+  // asterisk is then not shown at all.
   return terms;
 }
 
