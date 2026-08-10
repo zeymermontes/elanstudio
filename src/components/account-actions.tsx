@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { reserveAction, cancelAction } from "@/lib/actions/booking";
 import { bookingMessage } from "@/lib/booking-messages";
+import { CANCEL_WINDOW_NOTE } from "@/lib/booking-rules";
 import { cancelSubscriptionAction } from "@/lib/actions/subscription";
 
 /** Confirmation card shown when arriving at /cuenta?reservar=<ref>. */
@@ -89,22 +90,53 @@ export function CancelSubscription() {
   );
 }
 
-/** Cancel button on a booked class. */
-export function CancelBooking({ sessionId }: { sessionId: string }) {
+/**
+ * Cancel button on a booked class.
+ *
+ * `canCancel` is computed on the server so the label doesn't depend on the
+ * device's clock (and doesn't mismatch during hydration). It only hides the
+ * button early — cancel_booking enforces the window regardless, which is why
+ * the 'too_late' reply is still handled: the deadline can pass while the page
+ * sits open.
+ */
+export function CancelBooking({
+  sessionId,
+  canCancel,
+}: {
+  sessionId: string;
+  canCancel: boolean;
+}) {
   const [pending, start] = useTransition();
+  const [tooLate, setTooLate] = useState(false);
   const router = useRouter();
 
   function cancel() {
     start(async () => {
-      await cancelAction(sessionId);
+      const res = await cancelAction(sessionId);
+      if (res.code === "too_late") {
+        setTooLate(true);
+        return;
+      }
       router.refresh();
     });
+  }
+
+  if (!canCancel || tooLate) {
+    return (
+      <span
+        title={CANCEL_WINDOW_NOTE}
+        className="text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft/70"
+      >
+        Ya no se puede cancelar
+      </span>
+    );
   }
 
   return (
     <button
       onClick={cancel}
       disabled={pending}
+      title={CANCEL_WINDOW_NOTE}
       className="text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft transition-colors hover:text-pink-strong disabled:opacity-60"
     >
       {pending ? "Cancelando…" : "Cancelar"}

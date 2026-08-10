@@ -10,6 +10,7 @@ import {
   CancelBooking,
   CancelSubscription,
 } from "@/components/account-actions";
+import { canCancelBooking, CANCEL_WINDOW_NOTE } from "@/lib/booking-rules";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { decodeRef } from "@/lib/schedule-ref";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
@@ -249,10 +250,16 @@ export default async function CuentaPage({
                     {cs.locations?.name ? ` · ${cs.locations.name}` : ""}
                   </p>
                 </div>
-                <CancelBooking sessionId={b.session_id} />
+                <CancelBooking
+                  sessionId={b.session_id}
+                  canCancel={canCancelBooking(cs.starts_at)}
+                />
               </article>
             );
           })}
+          <p className="px-1 pt-1 text-xs text-ink-soft">
+            {CANCEL_WINDOW_NOTE}
+          </p>
         </div>
       )}
     </div>

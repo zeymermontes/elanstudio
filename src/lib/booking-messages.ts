@@ -3,12 +3,15 @@
  * "use server" actions file, which may only export async functions) so both
  * server actions and client components can import it.
  */
+import { CANCEL_WINDOW_NOTE } from "./booking-rules";
+
 const MESSAGES: Record<string, string> = {
   ok: "¡Reserva confirmada!",
   full: "Esta clase ya está llena.",
   no_credits: "No tienes clases disponibles. Compra un paquete.",
   already: "Ya tienes una reserva para esta clase.",
   closed: "Esta clase ya no está disponible.",
+  too_late: `Ya pasó el tiempo para cancelar esta clase. ${CANCEL_WINDOW_NOTE}`,
   auth: "Inicia sesión para reservar.",
   not_configured: "El backend aún no está configurado.",
   error: "Ocurrió un error. Intenta de nuevo.",
