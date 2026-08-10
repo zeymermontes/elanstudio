@@ -88,7 +88,9 @@ export default async function PaquetesPage() {
                 ) : null}
               </div>
 
-              <ul className="space-y-2 text-sm text-ink-soft">
+              {/* mb-7 keeps a minimum gap for the tallest card, where mt-auto
+                  on the button has no slack left to distribute. */}
+              <ul className="mb-7 space-y-2 text-sm text-ink-soft">
                 <li className="flex items-center gap-2">
                   <Check size={15} strokeWidth={1.5} className="text-gold" />
                   {unlimited ? "Clases ilimitadas" : `${p.credits} clase${p.credits > 1 ? "s" : ""}`}
@@ -105,9 +107,12 @@ export default async function PaquetesPage() {
                 </li>
               </ul>
 
+              {/* mt-auto pins the button to the bottom of the card. Cards with
+                  a promotion carry two extra lines, so without this the buttons
+                  sit at different heights across the row. */}
               <Link
                 href={`/comprar/${p.id}`}
-                className={`mt-7 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm uppercase tracking-[0.18em] transition-colors ${
+                className={`mt-auto inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm uppercase tracking-[0.18em] transition-colors ${
                   p.featured
                     ? "bg-pink text-white hover:bg-pink-strong"
                     : "border border-gold/50 text-ink hover:border-gold hover:text-pink-strong"
