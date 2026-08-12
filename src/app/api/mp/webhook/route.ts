@@ -26,10 +26,17 @@ export async function POST(req: NextRequest) {
     url.searchParams.get("data.id") ??
     url.searchParams.get("id");
 
+  // Set when we saw an approved payment but couldn't record the credits. That's
+  // the one case worth a non-200: acking it would tell MP the notification
+  // landed and end the retries, leaving a member who paid with nothing.
+  let retry = false;
+
   try {
     if (type === "payment") {
       const client = mpClient();
-      if (client && dataId) await handlePayment(admin, client, String(dataId));
+      if (client && dataId) {
+        retry = await handlePayment(admin, client, String(dataId));
+      }
     } else if (type === "subscription_preapproval") {
       if (dataId) await handlePreapproval(admin, String(dataId));
     } else if (type === "subscription_authorized_payment") {
@@ -39,6 +46,7 @@ export async function POST(req: NextRequest) {
     // Swallow and ack — MP retries on non-200, and our handlers are idempotent.
   }
 
+  if (retry) return NextResponse.json({ ok: false }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
 
@@ -48,28 +56,26 @@ function nextPeriodEnd() {
 }
 
 // --- one-time payment ------------------------------------------------------
+/** Returns true when MP should re-deliver this notification. */
 async function handlePayment(
   admin: SupabaseClient,
   client: NonNullable<ReturnType<typeof mpClient>>,
   paymentId: string,
-) {
+): Promise<boolean> {
   const payment = await new Payment(client).get({ id: paymentId });
   const purchaseId = payment.external_reference;
-  if (!purchaseId) return;
+  if (!purchaseId) return false;
 
   const { data: purchase } = await admin
     .from("purchases")
     .select("id, user_id, credits, status, packages(validity_days)")
     .eq("id", purchaseId)
     .single();
-  if (!purchase || purchase.status === "approved") return;
+  if (!purchase || purchase.status === "approved") return false;
+
+  const statusDetail = payment.status_detail ?? null;
 
   if (payment.status === "approved") {
-    await admin
-      .from("purchases")
-      .update({ status: "approved", mp_payment_id: String(paymentId) })
-      .eq("id", purchase.id);
-
     // Credits expire after the package's validity window (null = never).
     const pkg = purchase.packages as
       | { validity_days: number }
@@ -80,24 +86,50 @@ async function handlePayment(
       ? new Date(Date.now() + validity * 86400000).toISOString()
       : null;
 
-    // Unique index on (ref_id) where reason='purchase' makes this idempotent.
+    // Credit first, approve second. The check above skips an already-approved
+    // purchase, so approving before the credits land would close the door on
+    // our own retry and strand a member who paid.
+    const { error: creditError } = await admin.from("credit_ledger").insert({
+      user_id: purchase.user_id,
+      delta: purchase.credits,
+      reason: "purchase",
+      ref_id: purchase.id,
+      expires_at: expiresAt,
+    });
+
+    // 23505 is the unique index on (ref_id) where reason='purchase' rejecting a
+    // second credit — this webhook and /api/mp/process racing, which is what the
+    // index is for. The credits are already there, so carry on and approve.
+    if (creditError && creditError.code !== "23505") {
+      console.error(
+        "[mp/webhook] credit failed",
+        purchase.id,
+        creditError.code,
+        creditError.message,
+      );
+      return true;
+    }
+
     await admin
-      .from("credit_ledger")
-      .insert({
-        user_id: purchase.user_id,
-        delta: purchase.credits,
-        reason: "purchase",
-        ref_id: purchase.id,
-        expires_at: expiresAt,
+      .from("purchases")
+      .update({
+        status: "approved",
+        mp_payment_id: String(paymentId),
+        mp_status_detail: statusDetail,
       })
-      .select()
-      .maybeSingle();
+      .eq("id", purchase.id);
   } else if (payment.status === "rejected" || payment.status === "cancelled") {
     await admin
       .from("purchases")
-      .update({ status: "rejected", mp_payment_id: String(paymentId) })
+      .update({
+        status: "rejected",
+        mp_payment_id: String(paymentId),
+        mp_status_detail: statusDetail,
+      })
       .eq("id", purchase.id);
   }
+
+  return false;
 }
 
 // --- subscription authorization (status changes) ---------------------------

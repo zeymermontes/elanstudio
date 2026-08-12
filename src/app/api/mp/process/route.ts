@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { mpClient } from "@/lib/mercadopago";
 import { resolvePromotion } from "@/lib/promotions";
+import { paymentRejectionMessage } from "@/lib/mp-errors";
 
 /**
  * Processes an embedded (Bricks) one-time card payment. Receives the tokenized
@@ -67,6 +68,14 @@ export async function POST(req: NextRequest) {
   });
   const chargeMxn = applied?.finalMxn ?? listPrice;
 
+  // Name and phone for the risk engine (see buildAdditionalInfo). Best effort —
+  // a missing profile just means a thinner payload, never a failed charge.
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("full_name, phone")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const { data: purchase } = await admin
     .from("purchases")
     .insert({
@@ -94,43 +103,151 @@ export async function POST(req: NextRequest) {
         payer: { email: formData.payer?.email ?? user.email },
         external_reference: purchase.id,
         metadata: { purchase_id: purchase.id, user_id: user.id },
+        additional_info: buildAdditionalInfo({
+          pkg: { id: pkg.id, name: pkg.name },
+          chargeMxn,
+          fullName: profile?.full_name ?? "",
+          phone: profile?.phone ?? "",
+        }),
       },
+      requestOptions: { idempotencyKey: idempotencyKey(user.id, formData.token) },
     });
 
     const status = payment.status ?? "rejected";
-    const dbStatus =
+    const statusDetail = payment.status_detail ?? null;
+    let dbStatus =
       status === "approved"
         ? "approved"
         : status === "in_process" || status === "pending"
           ? "pending"
           : "rejected";
 
-    await admin
-      .from("purchases")
-      .update({ status: dbStatus, mp_payment_id: String(payment.id) })
-      .eq("id", purchase.id);
-
+    // Credit BEFORE marking the purchase approved. The webhook's rescue path
+    // bails on an already-approved row, so approving first and failing to credit
+    // would leave a member who paid with no credits and nothing left to retry.
     if (status === "approved") {
-      // Idempotent insert (unique index swallows a duplicate from the webhook).
-      await admin
-        .from("credit_ledger")
-        .insert({
-          user_id: user.id,
-          delta: pkg.credits,
-          reason: "purchase",
-          ref_id: purchase.id,
-          expires_at: expiresAt,
-        })
-        .select()
-        .maybeSingle();
+      const { error: creditError } = await admin.from("credit_ledger").insert({
+        user_id: user.id,
+        delta: pkg.credits,
+        reason: "purchase",
+        ref_id: purchase.id,
+        expires_at: expiresAt,
+      });
+
+      // 23505 is the unique index rejecting a second credit for this purchase —
+      // this route and the webhook racing, which is exactly what it's there for.
+      // The credits already landed, so that counts as success.
+      if (creditError && creditError.code !== "23505") {
+        console.error(
+          "[mp/process] credit failed",
+          purchase.id,
+          creditError.code,
+          creditError.message,
+        );
+        // Stay pending so the webhook still owns the rescue.
+        dbStatus = "pending";
+      }
     }
 
-    return NextResponse.json({ status, purchaseId: purchase.id });
-  } catch {
+    const { error: updateError } = await admin
+      .from("purchases")
+      .update({
+        status: dbStatus,
+        mp_payment_id: String(payment.id),
+        mp_status_detail: statusDetail,
+      })
+      .eq("id", purchase.id);
+    if (updateError) {
+      console.error(
+        "[mp/process] purchase update failed",
+        purchase.id,
+        updateError.code,
+        updateError.message,
+      );
+    }
+
+    return NextResponse.json({
+      status: dbStatus,
+      statusDetail,
+      message:
+        dbStatus === "rejected" ? paymentRejectionMessage(statusDetail) : null,
+      purchaseId: purchase.id,
+    });
+  } catch (err) {
+    // Log the API's own words. A malformed payload and a declined card both land
+    // here, and without the message they look identical — the first is our bug
+    // and would otherwise read as "every card is being declined".
+    console.error("[mp/process] payment failed", purchase.id, err);
     await admin
       .from("purchases")
       .update({ status: "rejected" })
       .eq("id", purchase.id);
-    return NextResponse.json({ error: "payment_failed" }, { status: 400 });
+    return NextResponse.json(
+      { error: "payment_failed", message: paymentRejectionMessage(null) },
+      { status: 400 },
+    );
   }
+}
+
+/**
+ * Idempotency key for the charge.
+ *
+ * Keyed on the card token, not the purchase: the token is single-use and the
+ * Brick issues a fresh one on every submit, so a double-click sends the same
+ * token twice (one charge) while a member who fixes their CVV and retries
+ * arrives with a new one (a real second attempt). Keying on the purchase id
+ * would do nothing here — we insert a new purchase row per submit — and keying
+ * on anything longer-lived would replay the stored rejection back at every
+ * retry, making a corrected CVV look permanently declined.
+ */
+function idempotencyKey(userId: string, token: string): string {
+  return `elan-${userId}-${token}`;
+}
+
+/**
+ * Extra context for Mercado Pago's risk engine.
+ *
+ * The Brick only sends token, amount and email; everything else that gets scored
+ * on borderline decisions (the ones that come back `cc_rejected_high_risk`) is
+ * ours to supply. Best effort throughout — a field we don't have is omitted
+ * rather than sent empty. A thin payload still charges, it just scores worse.
+ *
+ * `items` here must NOT carry `currency_id`. Preference items take it, payment
+ * items don't, and sending it fails the whole charge with an HTTP 400 before the
+ * card is ever touched. The SDK's `Items` type is shared with preferences, so
+ * TypeScript will happily let you add it — the compiler won't catch this one.
+ */
+function buildAdditionalInfo({
+  pkg,
+  chargeMxn,
+  fullName,
+  phone,
+}: {
+  pkg: { id: string; name: string };
+  chargeMxn: number;
+  fullName: string;
+  phone: string;
+}) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  const firstName = parts[0];
+  const lastName = parts.slice(1).join(" ");
+  const trimmedPhone = phone.trim();
+
+  return {
+    items: [
+      {
+        id: pkg.id,
+        title: pkg.name,
+        description: `Paquete de clases · ÉLANSTUDIO`,
+        category_id: "services",
+        quantity: 1,
+        unit_price: chargeMxn,
+      },
+    ],
+    payer: {
+      ...(firstName ? { first_name: firstName } : {}),
+      ...(lastName ? { last_name: lastName } : {}),
+      ...(trimmedPhone ? { phone: { number: trimmedPhone } } : {}),
+    },
+  };
 }

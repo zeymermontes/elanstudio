@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { initMercadoPago, CardPayment } from "@mercadopago/sdk-react";
 import { applyPromoCodeAction } from "@/lib/actions/promo";
 import { formatMxn } from "@/lib/format";
+import { paymentRejectionMessage } from "@/lib/mp-errors";
 import { PromoTerms } from "@/components/promo-terms";
 
 /** What the member is getting off, as resolved on the server. */
@@ -201,9 +202,11 @@ export function EmbeddedCheckout({
             ) {
               router.push("/cuenta?pago=pendiente");
             } else {
-              setError(
-                "No se pudo procesar el pago. Revisa los datos de tu tarjeta e intenta de nuevo.",
-              );
+              // The server reads Mercado Pago's status_detail and hands us a
+              // message the member can act on. A wrong security code, a card
+              // without funds and a bank block need three different fixes —
+              // one generic line made them all look like the same problem.
+              setError(data.message ?? paymentRejectionMessage(null));
             }
           }}
           onError={() =>

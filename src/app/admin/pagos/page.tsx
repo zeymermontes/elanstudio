@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatMxn } from "@/lib/format";
 import { PaymentsRealtime } from "@/components/admin/payments-realtime";
 import { requireAdmin } from "@/lib/auth";
+import { paymentRejectionMessage } from "@/lib/mp-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ type Row = {
   amount_mxn: number;
   credits: number;
   status: string;
+  mp_status_detail: string | null;
   created_at: string;
   packages: { name: string } | { name: string }[] | null;
 };
@@ -38,7 +40,7 @@ export default async function AdminPagosPage() {
     const { data } = await supabase
       .from("purchases")
       .select(
-        "id, user_id, amount_mxn, credits, status, created_at, packages(name)",
+        "id, user_id, amount_mxn, credits, status, mp_status_detail, created_at, packages(name)",
       )
       .order("created_at", { ascending: false })
       .limit(100);
@@ -96,6 +98,16 @@ export default async function AdminPagosPage() {
                     >
                       {STATUS_LABEL[r.status] ?? r.status}
                     </span>
+                    {/* Why it failed, in the same words the member saw — so a
+                        mistyped CVV and a bank block don't read as one problem. */}
+                    {r.status === "rejected" && r.mp_status_detail ? (
+                      <p
+                        className="mt-1.5 max-w-[22rem] text-xs text-ink-soft"
+                        title={r.mp_status_detail}
+                      >
+                        {paymentRejectionMessage(r.mp_status_detail)}
+                      </p>
+                    ) : null}
                   </td>
                 </tr>
               ))}
