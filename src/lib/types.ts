@@ -54,6 +54,10 @@ export type Package = {
   featured: boolean;
   active: boolean;
   recurring: boolean; // true = monthly subscription, false = one-time credits
+  /** Cap on how many can ever be sold. null = no limit. */
+  stockLimit: number | null;
+  /** Announce "quedan N" on the site. Meaningless without a stockLimit. */
+  showStockLeft: boolean;
 };
 
 /**

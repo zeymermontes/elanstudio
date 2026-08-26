@@ -1,4 +1,4 @@
-import { getAllPackages } from "@/lib/data";
+import { listPackagesWithStock } from "@/lib/admin-data";
 import { PackageForm } from "@/components/admin/package-form";
 import { requireAdmin } from "@/lib/auth";
 
@@ -6,13 +6,14 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPaquetesPage() {
   await requireAdmin();
-  const packages = await getAllPackages();
+  const packages = await listPackagesWithStock();
 
   return (
     <div>
       <h1 className="font-serif text-4xl text-ink">Paquetes</h1>
       <p className="mt-1 mb-8 text-sm text-ink-soft">
-        Crea y edita los paquetes y precios que se muestran en el sitio.
+        Crea y edita los paquetes y precios que se muestran en el sitio. Un
+        paquete con límite de compras desaparece del sitio al agotarse.
       </p>
 
       <section className="mb-10">

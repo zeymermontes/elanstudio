@@ -435,6 +435,8 @@ function mapPackage(p: Row): Package {
     featured: Boolean(p.featured),
     active: Boolean(p.active),
     recurring: Boolean(p.recurring),
+    stockLimit: (p.stock_limit as number) ?? null,
+    showStockLeft: Boolean(p.show_stock_left),
   };
 }
 

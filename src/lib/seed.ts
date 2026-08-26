@@ -148,6 +148,8 @@ export const packages: Package[] = [
     featured: false,
     active: true,
     recurring: false,
+    stockLimit: null,
+    showStockLeft: false,
   },
   {
     id: "pkg-5",
@@ -159,6 +161,8 @@ export const packages: Package[] = [
     featured: false,
     active: true,
     recurring: false,
+    stockLimit: null,
+    showStockLeft: false,
   },
   {
     id: "pkg-10",
@@ -170,6 +174,8 @@ export const packages: Package[] = [
     featured: true,
     active: true,
     recurring: false,
+    stockLimit: null,
+    showStockLeft: false,
   },
   {
     id: "pkg-unlimited",
@@ -181,6 +187,8 @@ export const packages: Package[] = [
     featured: false,
     active: true,
     recurring: true,
+    stockLimit: null,
+    showStockLeft: false,
   },
 ];
 

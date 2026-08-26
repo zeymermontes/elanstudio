@@ -10,18 +10,31 @@ import {
   promoBadge,
   type AppliedPromo,
 } from "@/lib/promotions";
+import {
+  resolveStockFor,
+  stockLabel,
+  type PackageStock,
+} from "@/lib/stock";
 import { formatMxn } from "@/lib/format";
 import { PromoTerms } from "@/components/promo-terms";
 
 export const metadata: Metadata = { title: "Paquetes" };
 
 export default async function PaquetesPage() {
-  const packages = await getPackages();
+  const catalog = await getPackages();
+
+  const admin = createSupabaseAdminClient();
+  const user = await getCurrentUser();
+
+  // A limited run leaves the list the moment its last spot is taken, so nobody
+  // starts a checkout that can only end in "ya no está disponible".
+  const stock: Map<string, PackageStock> = admin
+    ? await resolveStockFor(admin, catalog)
+    : new Map();
+  const packages = catalog.filter((p) => !stock.get(p.id)?.soldOut);
 
   // Self-applying promotions for whoever is looking. Resolved per-visitor so a
   // member who already bought doesn't see a "new clients" price they can't get.
-  const admin = createSupabaseAdminClient();
-  const user = await getCurrentUser();
   const promos: Map<string, AppliedPromo> = admin
     ? await resolvePromotionsFor(admin, packages, user?.id ?? null)
     : new Map();
@@ -34,10 +47,18 @@ export default async function PaquetesPage() {
         intro="Elige el plan que se adapta a tu ritmo. Compra en línea y reserva tus clases al instante."
       />
 
+      {packages.length === 0 ? (
+        <p className="mx-auto max-w-xl px-5 text-center text-sm text-ink-soft">
+          Por ahora no hay paquetes disponibles. Escríbenos y te avisamos en
+          cuanto abramos los siguientes lugares.
+        </p>
+      ) : null}
+
       <div className="mx-auto grid max-w-6xl gap-6 px-5 sm:grid-cols-2 lg:grid-cols-4">
         {packages.map((p) => {
           const unlimited = p.credits >= 999;
           const promo = promos.get(p.id);
+          const left = p.showStockLeft ? stock.get(p.id) : null;
           return (
             <article
               key={p.id}
@@ -85,6 +106,13 @@ export default async function PaquetesPage() {
                       />
                     </p>
                   </>
+                ) : null}
+                {left ? (
+                  <p className="mt-2">
+                    <span className="inline-block rounded-full bg-gold-soft/60 px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.12em] text-ink">
+                      {stockLabel(left)}
+                    </span>
+                  </p>
                 ) : null}
               </div>
 

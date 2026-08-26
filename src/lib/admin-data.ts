@@ -5,7 +5,9 @@
  */
 import { createSupabaseAdminClient } from "./supabase/admin";
 import { DEFAULT_UTC_OFFSET_MIN, dayKey } from "./format";
-import type { PromotionWithScope } from "./types";
+import { getAllPackages } from "./data";
+import { resolveStockFor, type PackageStock } from "./stock";
+import type { Package, PromotionWithScope } from "./types";
 
 export type MemberRow = {
   id: string;
@@ -544,6 +546,24 @@ export async function getSessionRoster(
     capacity: s.capacity,
     roster,
   };
+}
+
+/** A package plus how much of its limited run is gone (null = uncapped). */
+export type PackageWithStock = Package & { stock: PackageStock | null };
+
+/**
+ * Every package with its sold count, for /admin/paquetes. Counts the same way
+ * the storefront and the charge paths do (see src/lib/stock.ts), so the number
+ * the admin reads is the number that decides whether the package is still on
+ * sale.
+ */
+export async function listPackagesWithStock(): Promise<PackageWithStock[]> {
+  const packages = await getAllPackages();
+  const admin = createSupabaseAdminClient();
+  if (!admin) return packages.map((p) => ({ ...p, stock: null }));
+
+  const stock = await resolveStockFor(admin, packages);
+  return packages.map((p) => ({ ...p, stock: stock.get(p.id) ?? null }));
 }
 
 /**

@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { resolvePromotion } from "@/lib/promotions";
+import { resolveStock } from "@/lib/stock";
 import { formatMxn } from "@/lib/format";
 import { EmbeddedCheckout } from "@/components/embedded-checkout";
 import { SubscribeButton } from "@/components/subscribe-button";
@@ -35,9 +36,16 @@ export default async function ComprarPage({
   const unlimited = pkg.credits >= 999;
   const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ?? "";
 
+  const admin = createSupabaseAdminClient();
+
+  // A limited run can sell out while someone sits on this page, or between
+  // their bookmarking it and coming back. Say so warmly instead of 404ing —
+  // they were on their way to pay us.
+  const stock = admin ? await resolveStock(admin, pkg) : null;
+  if (stock?.soldOut) return <SoldOut name={pkg.name} />;
+
   // Self-applying promotion, if this member qualifies for one. Codes are
   // handled inside the checkout; both are re-resolved server-side when charging.
-  const admin = createSupabaseAdminClient();
   const promo = admin
     ? await resolvePromotion(admin, { pkg, userId })
     : null;
@@ -122,6 +130,28 @@ export default async function ComprarPage({
       <p className="mt-6 text-center text-xs text-ink-soft">
         Pago seguro procesado por Mercado Pago.
       </p>
+    </div>
+  );
+}
+
+/** The package ran out before this member got to pay. */
+function SoldOut({ name }: { name: string }) {
+  return (
+    <div className="mx-auto max-w-xl px-5 py-14 text-center">
+      <p className="text-[0.7rem] uppercase tracking-luxe text-gold">
+        Se agotó
+      </p>
+      <h1 className="mt-2 font-serif text-3xl text-ink">{name}</h1>
+      <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+        Este paquete tenía lugares limitados y ya se tomaron todos. Nos encantará
+        recibirte con alguno de los demás.
+      </p>
+      <Link
+        href="/paquetes"
+        className="mt-7 inline-flex items-center justify-center rounded-full bg-pink px-7 py-3 text-sm uppercase tracking-[0.18em] text-white shadow-soft transition-colors hover:bg-pink-strong"
+      >
+        Ver paquetes
+      </Link>
     </div>
   );
 }

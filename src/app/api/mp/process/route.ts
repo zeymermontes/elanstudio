@@ -4,7 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { mpClient } from "@/lib/mercadopago";
 import { resolvePromotion } from "@/lib/promotions";
+import { resolveStock } from "@/lib/stock";
 import { paymentRejectionMessage } from "@/lib/mp-errors";
+import type { Package } from "@/lib/types";
 
 /**
  * Processes an embedded (Bricks) one-time card payment. Receives the tokenized
@@ -35,7 +37,9 @@ export async function POST(req: NextRequest) {
   // recurring packages here — those go through the subscription flow.
   const { data: pkg } = await admin
     .from("packages")
-    .select("id, name, price_mxn, credits, recurring, validity_days")
+    .select(
+      "id, name, price_mxn, credits, recurring, validity_days, stock_limit, show_stock_left",
+    )
     .eq("id", packageId)
     .eq("active", true)
     .single();
@@ -48,21 +52,41 @@ export async function POST(req: NextRequest) {
     ? new Date(Date.now() + pkg.validity_days * 86400000).toISOString()
     : null;
 
+  const listPrice = Number(pkg.price_mxn);
+  const domainPkg: Package = {
+    id: pkg.id,
+    name: pkg.name,
+    description: "",
+    credits: pkg.credits,
+    priceMxn: listPrice,
+    validityDays: pkg.validity_days ?? 30,
+    featured: false,
+    active: true,
+    recurring: Boolean(pkg.recurring),
+    stockLimit: pkg.stock_limit ?? null,
+    showStockLeft: Boolean(pkg.show_stock_left),
+  };
+
+  // Last stop for a limited run. /paquetes hides a sold-out package and the
+  // checkout page refuses to render one, but a member already sitting on the
+  // form when the last spot went arrives here with a valid token — charging
+  // them would mean a refund, not a sale.
+  const stock = await resolveStock(admin, domainPkg);
+  if (stock?.soldOut) {
+    return NextResponse.json(
+      {
+        error: "sold_out",
+        message:
+          "Este paquete tenía lugares limitados y acaba de agotarse. No te hicimos ningún cargo.",
+      },
+      { status: 400 },
+    );
+  }
+
   // Resolve the discount here rather than trusting anything the browser sent —
   // the client only supplies the code, never the price.
-  const listPrice = Number(pkg.price_mxn);
   const applied = await resolvePromotion(admin, {
-    pkg: {
-      id: pkg.id,
-      name: pkg.name,
-      description: "",
-      credits: pkg.credits,
-      priceMxn: listPrice,
-      validityDays: pkg.validity_days ?? 30,
-      featured: false,
-      active: true,
-      recurring: Boolean(pkg.recurring),
-    },
+    pkg: domainPkg,
     userId: user.id,
     code: promoCode,
   });

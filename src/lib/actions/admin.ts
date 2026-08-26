@@ -25,6 +25,14 @@ function str(fd: FormData, k: string) {
 function num(fd: FormData, k: string) {
   return Number(fd.get(k) ?? 0);
 }
+/** Optional positive integer field — empty means "no cap". */
+function optInt(fd: FormData, k: string): number | null {
+  const raw = str(fd, k);
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+}
+
 function slugify(s: string) {
   return s
     .toLowerCase()
@@ -85,6 +93,9 @@ export async function savePackageAction(
     featured: fd.get("featured") === "on",
     active: str(fd, "active") !== "false",
     recurring: fd.get("recurring") === "on",
+    // Empty = no limit, which is also how the admin turns a limit back off.
+    stock_limit: optInt(fd, "stock_limit"),
+    show_stock_left: fd.get("show_stock_left") === "on",
   };
 
   const { error } = id
@@ -536,14 +547,6 @@ export async function coverCoachAction(
 // ---------------------------------------------------------------------------
 // Promotions
 // ---------------------------------------------------------------------------
-
-/** Optional positive integer field — empty means "no cap". */
-function optInt(fd: FormData, k: string): number | null {
-  const raw = str(fd, k);
-  if (!raw) return null;
-  const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
-}
 
 /**
  * A datetime-local input has no timezone. Interpreting it in the server's zone

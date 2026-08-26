@@ -7,6 +7,8 @@ import { startSubscriptionAction } from "@/lib/actions/subscription";
 const ERRORS: Record<string, string> = {
   not_configured: "Las suscripciones aún no están disponibles. Vuelve pronto.",
   not_found: "Este plan no está disponible.",
+  sold_out:
+    "Este plan tenía lugares limitados y acaba de agotarse. No te hicimos ningún cargo.",
   error: "Ocurrió un error. Intenta de nuevo.",
 };
 

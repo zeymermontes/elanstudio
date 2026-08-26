@@ -6,15 +6,16 @@ import {
   deletePackageAction,
   type FormState,
 } from "@/lib/actions/admin";
-import type { Package } from "@/lib/types";
+import type { PackageWithStock } from "@/lib/admin-data";
 import { Field, StatusBanner, SaveButton, inputClass } from "./form-ui";
 import { DeleteButton } from "./delete-button";
 
-export function PackageForm({ pkg }: { pkg?: Package }) {
+export function PackageForm({ pkg }: { pkg?: PackageWithStock }) {
   const [state, action] = useActionState<FormState, FormData>(
     savePackageAction,
     null,
   );
+  const stock = pkg?.stock ?? null;
 
   return (
     <form
@@ -43,6 +44,49 @@ export function PackageForm({ pkg }: { pkg?: Package }) {
             <input name="validity_days" type="number" min={1} defaultValue={pkg?.validityDays ?? 30} className={inputClass} />
           </Field>
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Límite de compras (vacío = sin límite)">
+            <input
+              name="stock_limit"
+              type="number"
+              min={1}
+              defaultValue={pkg?.stockLimit ?? ""}
+              placeholder="Sin límite"
+              className={inputClass}
+            />
+          </Field>
+          <label className="flex items-end gap-2 pb-2.5 text-sm text-ink-soft">
+            <input
+              type="checkbox"
+              name="show_stock_left"
+              defaultChecked={pkg?.showStockLeft}
+              className="accent-pink"
+            />
+            Mostrar cuántos quedan en el sitio
+          </label>
+        </div>
+
+        {stock ? (
+          <p
+            className={`rounded-xl px-4 py-2.5 text-sm ${
+              stock.soldOut
+                ? "bg-pink-soft/60 text-pink-strong"
+                : "bg-gold-soft/40 text-ink"
+            }`}
+          >
+            {stock.soldOut ? (
+              <>
+                <strong>Terminado</strong> — se vendieron los {stock.limit} y ya
+                no aparece en el sitio.
+              </>
+            ) : (
+              <>
+                {stock.sold} de {stock.limit} vendidos · quedan {stock.left}.
+              </>
+            )}
+          </p>
+        ) : null}
+
         <div className="flex flex-wrap items-center gap-6">
           <label className="flex items-center gap-2 text-sm text-ink-soft">
             <input type="checkbox" name="featured" defaultChecked={pkg?.featured} className="accent-pink" />

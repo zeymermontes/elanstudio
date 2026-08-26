@@ -41,7 +41,9 @@ export async function applyPromoCodeAction(
 
   const { data } = await admin
     .from("packages")
-    .select("id, name, description, credits, price_mxn, validity_days, featured, active, recurring")
+    .select(
+      "id, name, description, credits, price_mxn, validity_days, featured, active, recurring, stock_limit, show_stock_left",
+    )
     .eq("id", packageId)
     .eq("active", true)
     .single();
@@ -57,6 +59,8 @@ export async function applyPromoCodeAction(
     featured: Boolean(data.featured),
     active: Boolean(data.active),
     recurring: Boolean(data.recurring),
+    stockLimit: data.stock_limit ?? null,
+    showStockLeft: Boolean(data.show_stock_left),
   };
 
   if (pkg.recurring) {

@@ -8,6 +8,7 @@ import {
   mpHeaders,
   siteUrl,
 } from "@/lib/mercadopago";
+import { resolveStock } from "@/lib/stock";
 
 export type SubResult = { url?: string; error?: string };
 export type CancelResult = { ok: boolean; error?: string };
@@ -31,11 +32,22 @@ export async function startSubscriptionAction(
 
   const { data: pkg } = await admin
     .from("packages")
-    .select("id, name, price_mxn, recurring")
+    .select("id, name, price_mxn, recurring, stock_limit")
     .eq("id", packageId)
     .eq("active", true)
     .single();
   if (!pkg || !pkg.recurring) return { error: "not_found" };
+
+  // A capped plan stops accepting members once its spots are taken. Checked
+  // here rather than only on the page, since the last one can go while someone
+  // is looking at it — and sending them to Mercado Pago first would mean an
+  // authorized charge we'd have to undo.
+  const stock = await resolveStock(admin, {
+    id: pkg.id,
+    recurring: true,
+    stockLimit: pkg.stock_limit ?? null,
+  });
+  if (stock?.soldOut) return { error: "sold_out" };
 
   const { data: sub } = await admin
     .from("subscriptions")
