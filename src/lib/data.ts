@@ -253,6 +253,104 @@ export async function getWeeklyClasses(): Promise<WeeklyClass[]> {
 }
 
 /**
+ * How far ahead one-off events are looked up. Unlike the recurring template —
+ * which only makes sense a week or two out — a workshop or a guest class is
+ * announced well in advance, so it has to be visible long before its date.
+ */
+export const EVENT_HORIZON_DAYS = 180;
+
+type SlotMaps = {
+  ctById: Map<string, ClassType>;
+  coachById: Map<string, Coach>;
+  locById: Map<string, Location>;
+};
+
+/** A one-off session row → schedule slot. Null when cancelled or orphaned. */
+function toEventSlot(
+  s: Row,
+  { ctById, coachById, locById }: SlotMaps,
+  booked: number,
+): ScheduleSlot | null {
+  if (s.status === "cancelled") return null;
+  const ct = ctById.get(s.class_type_id as string);
+  if (!ct) return null;
+  const locationId = (s.location_id as string) ?? null;
+  const capacity = s.capacity as number;
+  return {
+    ref: { kind: "session", sessionId: s.id as string },
+    classType: ct,
+    coach: s.coach_id ? coachById.get(s.coach_id as string) ?? null : null,
+    location: locationId ? locById.get(locationId) ?? null : null,
+    startsAt: s.starts_at as string,
+    endsAt: s.ends_at as string,
+    capacity,
+    booked,
+    spotsLeft: Math.max(0, capacity - booked),
+    utcOffsetMin:
+      (locationId ? locById.get(locationId)?.utcOffsetMin : undefined) ??
+      DEFAULT_UTC_OFFSET_MIN,
+    isEvent: true,
+    featured: Boolean(s.featured),
+  };
+}
+
+/**
+ * Upcoming one-off events (no weekly template behind them), from now to the
+ * event horizon. `featuredOnly` narrows it to the ones the admin chose to
+ * announce on the landing page.
+ */
+export async function getSpecialEvents({
+  featuredOnly = false,
+  daysAhead = EVENT_HORIZON_DAYS,
+}: { featuredOnly?: boolean; daysAhead?: number } = {}): Promise<ScheduleSlot[]> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return [];
+
+  const now = new Date();
+  const end = new Date(now.getTime() + daysAhead * 86400000);
+
+  let query = supabase
+    .from("class_sessions")
+    .select("*")
+    .is("weekly_class_id", null)
+    .eq("status", "scheduled")
+    .gte("starts_at", now.toISOString())
+    .lte("starts_at", end.toISOString())
+    .order("starts_at", { ascending: true });
+  if (featuredOnly) query = query.eq("featured", true);
+
+  const { data: rows } = await query;
+  if (!rows?.length) return [];
+
+  const [classTypes, coaches, locations] = await Promise.all([
+    getClassTypes(),
+    getCoaches(),
+    getLocations(),
+  ]);
+  const maps: SlotMaps = {
+    ctById: new Map(classTypes.map((c) => [c.id, c])),
+    coachById: new Map(coaches.map((c) => [c.id, c])),
+    locById: new Map(locations.map((l) => [l.id, l])),
+  };
+
+  const counts = new Map<string, number>();
+  const { data: bk } = await supabase
+    .from("bookings")
+    .select("session_id")
+    .eq("status", "confirmed")
+    .in(
+      "session_id",
+      rows.map((r) => r.id),
+    );
+  for (const b of bk ?? [])
+    counts.set(b.session_id, (counts.get(b.session_id) ?? 0) + 1);
+
+  return rows
+    .map((r) => toEventSlot(r, maps, counts.get(r.id) ?? 0))
+    .filter((s): s is ScheduleSlot => s !== null);
+}
+
+/**
  * Compute the bookable schedule for the next `daysAhead` days from the weekly
  * template, overlaying materialized exceptions (coach cover, cancellations) and
  * one-off events.
@@ -286,6 +384,8 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           spotsLeft: Math.max(0, s.capacity - s.booked),
           utcOffsetMin:
             locById.get(s.locationId)?.utcOffsetMin ?? DEFAULT_UTC_OFFSET_MIN,
+          isEvent: false,
+          featured: false,
         };
       })
       .filter((s): s is ScheduleSlot => s !== null)
@@ -365,6 +465,8 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           booked: counts.get(mat.id) ?? 0,
           spotsLeft: Math.max(0, mat.capacity - (counts.get(mat.id) ?? 0)),
           utcOffsetMin: offsetMin,
+          isEvent: false,
+          featured: false,
         });
       } else {
         const endsAt = new Date(startsAt.getTime() + w.durationMin * 60000);
@@ -379,6 +481,8 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           booked: 0,
           spotsLeft: w.capacity,
           utcOffsetMin: offsetMin,
+          isEvent: false,
+          featured: false,
         });
       }
     }
@@ -386,23 +490,8 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
 
   // One-off special events (no template).
   for (const s of oneOffs) {
-    if (s.status === "cancelled") continue;
-    const ct = ctById.get(s.class_type_id);
-    if (!ct) continue;
-    slots.push({
-      ref: { kind: "session", sessionId: s.id },
-      classType: ct,
-      coach: s.coach_id ? coachById.get(s.coach_id) ?? null : null,
-      location: s.location_id ? locById.get(s.location_id) ?? null : null,
-      startsAt: s.starts_at,
-      endsAt: s.ends_at,
-      capacity: s.capacity,
-      booked: counts.get(s.id) ?? 0,
-      spotsLeft: Math.max(0, s.capacity - (counts.get(s.id) ?? 0)),
-      utcOffsetMin:
-        (s.location_id ? locById.get(s.location_id)?.utcOffsetMin : undefined) ??
-        DEFAULT_UTC_OFFSET_MIN,
-    });
+    const slot = toEventSlot(s, { ctById, coachById, locById }, counts.get(s.id) ?? 0);
+    if (slot) slots.push(slot);
   }
 
   return slots.sort((a, b) => a.startsAt.localeCompare(b.startsAt));

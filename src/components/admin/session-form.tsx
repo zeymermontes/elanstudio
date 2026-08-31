@@ -61,6 +61,16 @@ export function SessionForm({
             <input type="number" name="capacity" min={1} placeholder="Por defecto de la clase" className={inputClass} />
           </Field>
         </div>
+        <label className="flex items-start gap-2.5 text-sm text-ink-soft">
+          <input type="checkbox" name="featured" className="mt-0.5 accent-pink" />
+          <span>
+            Anunciarlo en la portada
+            <span className="mt-0.5 block text-xs text-ink-soft/80">
+              Aparece en &laquo;Próximos eventos especiales&raquo; en el inicio.
+              Sin marcar, el evento igual se ve en Horarios.
+            </span>
+          </span>
+        </label>
         <div className="flex justify-end">
           <SaveButton label="Agendar clase" />
         </div>

@@ -5,11 +5,13 @@ import {
   getLocations,
   getWeeklyClasses,
   getSchedule,
+  getSpecialEvents,
 } from "@/lib/data";
 import { SessionForm } from "@/components/admin/session-form";
 import { WeeklyClassForm } from "@/components/admin/weekly-class-form";
 import { WEEKDAYS } from "@/lib/weekdays";
 import { ScheduleSlotActions } from "@/components/admin/schedule-slot-actions";
+import { EventFeaturedToggle } from "@/components/admin/event-featured-toggle";
 import { Tabs } from "@/components/admin/tabs";
 import { encodeRef } from "@/lib/schedule-ref";
 import { formatDayLabel, formatTime, dayKey, cap } from "@/lib/format";
@@ -19,13 +21,15 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminHorarioPage() {
   await requireAdmin();
-  const [classTypes, coaches, locations, weekly, schedule] = await Promise.all([
-    getClassTypes(),
-    getCoaches(),
-    getLocations(),
-    getWeeklyClasses(),
-    getSchedule(21),
-  ]);
+  const [classTypes, coaches, locations, weekly, schedule, events] =
+    await Promise.all([
+      getClassTypes(),
+      getCoaches(),
+      getLocations(),
+      getWeeklyClasses(),
+      getSchedule(21),
+      getSpecialEvents(),
+    ]);
 
   // Group the computed schedule by local calendar day.
   const byDay = new Map<string, ScheduleSlot[]>();
@@ -136,13 +140,60 @@ export default async function AdminHorarioPage() {
     </section>
   );
 
-  // --- Tab: one-off special event ---
+  // --- Tab: one-off special events ---
   const eventoTab = (
     <section>
       <p className="mb-6 text-sm text-ink-soft">
-        Crea una clase o evento único (fuera del horario semanal).
+        Crea una clase o evento único (fuera del horario semanal). Los eventos
+        se ven en Horarios desde que los creas, por lejana que sea la fecha.
       </p>
       <SessionForm classTypes={classTypes} coaches={coaches} locations={locations} />
+
+      <div className="mt-8">
+        <h3 className="mb-4 text-[0.7rem] uppercase tracking-luxe text-gold">
+          Eventos programados
+        </h3>
+        {events.length === 0 ? (
+          <p className="text-sm text-ink-soft">
+            No hay eventos únicos programados.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {events.map((e) => (
+              <article
+                key={encodeRef(e.ref)}
+                className="surface-card flex flex-col gap-3 rounded-xl px-5 py-4 shadow-soft"
+              >
+                <div>
+                  <p className="font-serif text-lg text-ink">
+                    {cap(formatDayLabel(e.startsAt, e.utcOffsetMin))} ·{" "}
+                    {formatTime(e.startsAt, e.utcOffsetMin)}
+                  </p>
+                  <p className="text-xs text-ink-soft">
+                    {e.classType.name} · {e.coach?.name ?? "Sin coach"}
+                    {e.location?.name ? ` · ${e.location.name}` : ""} ·{" "}
+                    {e.booked}/{e.capacity} reservas
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-4">
+                  {e.ref.kind === "session" ? (
+                    <EventFeaturedToggle
+                      sessionId={e.ref.sessionId}
+                      featured={e.featured}
+                    />
+                  ) : null}
+                  <ScheduleSlotActions
+                    refStr={encodeRef(e.ref)}
+                    coaches={coaches}
+                    currentCoachId={e.coach?.id ?? null}
+                    sessionId={e.ref.kind === "session" ? e.ref.sessionId : null}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 
@@ -157,7 +208,7 @@ export default async function AdminHorarioPage() {
         tabs={[
           { key: "plantilla", label: "Horario semanal", content: plantillaTab },
           { key: "proximas", label: "Próximas clases", content: proximasTab },
-          { key: "evento", label: "Evento único", content: eventoTab },
+          { key: "evento", label: "Eventos únicos", content: eventoTab },
         ]}
       />
     </div>

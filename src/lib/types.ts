@@ -136,4 +136,8 @@ export type ScheduleSlot = {
   spotsLeft: number;
   /** UTC offset (minutes) of the slot's location — how to display its time. */
   utcOffsetMin: number;
+  /** True for a one-off event (no weekly template behind it). */
+  isEvent: boolean;
+  /** One-off events only: announce it on the landing page. */
+  featured: boolean;
 };

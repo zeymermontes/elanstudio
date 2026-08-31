@@ -370,11 +370,34 @@ export async function createSessionAction(
     starts_at: starts.toISOString(),
     ends_at: ends.toISOString(),
     capacity,
+    featured: fd.get("featured") === "on",
   });
 
   if (error) return { error: error.message };
   revalidatePath("/admin/horario");
   revalidatePath("/horarios");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/**
+ * Flip whether a one-off event is announced on the landing page. Separate from
+ * creation so a forgotten checkbox — or an event that filled up — can be fixed
+ * without deleting and re-creating it.
+ */
+export async function toggleSessionFeaturedAction(
+  id: string,
+  featured: boolean,
+): Promise<FormState> {
+  const supabase = await adminClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  const { error } = await supabase
+    .from("class_sessions")
+    .update({ featured })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/horario");
+  revalidatePath("/");
   return { ok: true };
 }
 
@@ -386,6 +409,7 @@ export async function deleteSessionAction(id: string): Promise<FormState> {
     .delete()
     .eq("id", id);
   if (error) return { error: error.message };
+  revalidatePath("/");
   revalidatePath("/admin/horario");
   revalidatePath("/horarios");
   return { ok: true };
@@ -509,6 +533,7 @@ export async function cancelClassAction(refStr: string): Promise<FormState> {
 
   revalidatePath("/admin/horario");
   revalidatePath("/horarios");
+  revalidatePath("/"); // a cancelled event must drop off the landing page
   return { ok: true };
 }
 

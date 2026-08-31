@@ -139,6 +139,24 @@ export function dayKey(iso: string, offsetMin = DEFAULT_UTC_OFFSET_MIN): string 
   return `${d.getUTCFullYear()}-${m}-${day}`;
 }
 
+/**
+ * Day number + short month for a date badge, e.g. { day: "12", month: "sep" }.
+ * Split in two so each half can be styled on its own line.
+ */
+export function dateBadge(
+  iso: string,
+  offsetMin = DEFAULT_UTC_OFFSET_MIN,
+): { day: string; month: string } {
+  const d = atOffset(iso, offsetMin);
+  const month = new Intl.DateTimeFormat("es-MX", {
+    month: "short",
+    timeZone: "UTC",
+  })
+    .format(d)
+    .replace(".", "");
+  return { day: String(d.getUTCDate()), month };
+}
+
 /** Short tab label like "Lun 8". */
 export function formatTabDay(
   iso: string,

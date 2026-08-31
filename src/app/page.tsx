@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Sparkles, HeartHandshake, Flower2 } from "lucide-react";
 import { defaultSettings as s } from "@/lib/site";
-import { getClassTypes } from "@/lib/data";
+import { getClassTypes, getSpecialEvents } from "@/lib/data";
+import { SpecialEvents } from "@/components/special-events";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const values = [
@@ -18,14 +19,18 @@ const values = [
   {
     icon: Flower2,
     title: "Un espacio sereno",
-    desc: "Ambiente sobrio y luminoso, pensado para tu bienestar.",
+    desc: "Un espacio creado solo para mujeres.",
   },
 ];
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const featuredClasses = (await getClassTypes()).slice(0, 3);
+  const [classTypes, specialEvents] = await Promise.all([
+    getClassTypes(),
+    getSpecialEvents({ featuredOnly: true }),
+  ]);
+  const featuredClasses = classTypes.slice(0, 3);
 
   // Dynamic closing CTA based on the visitor's state.
   let cta = {
@@ -125,6 +130,9 @@ export default async function Home() {
           ))}
         </div>
       </section>
+
+      {/* ---------- Upcoming special events (hidden when there are none) ---------- */}
+      <SpecialEvents events={specialEvents} />
 
       {/* ---------- Featured classes ---------- */}
       <section className="mx-auto max-w-6xl px-5 py-20">

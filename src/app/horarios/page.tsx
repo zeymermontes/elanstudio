@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Sun, Sunset } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs } from "@/components/admin/tabs";
-import { getSchedule } from "@/lib/data";
+import { getSchedule, getSpecialEvents } from "@/lib/data";
 import { formatDayLabel, formatTabDay, dayKey, zonedHour, cap } from "@/lib/format";
 import { ScheduleSlotItem } from "@/components/schedule-slot-item";
 import { encodeRef } from "@/lib/schedule-ref";
@@ -35,8 +35,8 @@ function PartOfDay({
   );
 }
 
-/** Build one tab per calendar day (with a morning/afternoon split) for a set of slots. */
-function buildDayTabs(slots: ScheduleSlot[]) {
+/** Group slots by the calendar day they read as, preserving chronological order. */
+function groupByDay(slots: ScheduleSlot[]): [string, ScheduleSlot[]][] {
   const byDay = new Map<string, ScheduleSlot[]>();
   for (const s of slots) {
     const key = dayKey(s.startsAt, s.utcOffsetMin);
@@ -44,8 +44,12 @@ function buildDayTabs(slots: ScheduleSlot[]) {
     list.push(s);
     byDay.set(key, list);
   }
+  return [...byDay.entries()];
+}
 
-  return [...byDay.entries()].map(([date, daySlots]) => {
+/** Build one tab per calendar day (with a morning/afternoon split) for a set of slots. */
+function buildDayTabs(slots: ScheduleSlot[]) {
+  return groupByDay(slots).map(([date, daySlots]) => {
     const morning = daySlots.filter(
       (s) => zonedHour(s.startsAt, s.utcOffsetMin) < 12,
     );
@@ -70,8 +74,24 @@ function buildDayTabs(slots: ScheduleSlot[]) {
   });
 }
 
+/** The recurring template is only expanded a week out; events reach much further. */
+const WEEK_DAYS = 7;
+
 export default async function HorariosPage() {
-  const slots = await getSchedule(7);
+  const [slots, allEvents] = await Promise.all([
+    getSchedule(WEEK_DAYS),
+    getSpecialEvents(),
+  ]);
+
+  // Events inside the week already have their own day tab; the rest would be
+  // invisible without a section of their own, which is the point of listing
+  // them here — a workshop a month out has to be findable today.
+  const inTabs = new Set(
+    slots.map((s) => (s.ref.kind === "session" ? s.ref.sessionId : "")),
+  );
+  const laterEvents = allEvents.filter(
+    (e) => e.ref.kind === "session" && !inTabs.has(e.ref.sessionId),
+  );
 
   // Group by branch so users can filter the week by location.
   const byLocation = new Map<
@@ -114,14 +134,56 @@ export default async function HorariosPage() {
 
       <div className="mx-auto max-w-4xl px-5">
         {dayTabs.length === 0 ? (
-          <p className="text-center text-sm text-ink-soft">
-            Aún no hay clases publicadas. Vuelve pronto.
-          </p>
+          laterEvents.length === 0 ? (
+            <p className="text-center text-sm text-ink-soft">
+              Aún no hay clases publicadas. Vuelve pronto.
+            </p>
+          ) : null
         ) : showLocationFilter ? (
           <Tabs tabs={locationTabs} />
         ) : (
           <Tabs tabs={dayTabs} />
         )}
+
+        {laterEvents.length > 0 ? (
+          <section className="mt-16 border-t border-line pt-12">
+            <div className="mb-8 text-center">
+              <p className="mb-2 text-[0.7rem] uppercase tracking-luxe text-gold">
+                Más adelante
+              </p>
+              <h2 className="font-serif text-3xl font-light text-ink">
+                Eventos especiales
+              </h2>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-soft">
+                Fechas únicas fuera del horario semanal. Puedes reservar tu lugar
+                desde ahora.
+              </p>
+            </div>
+            <div className="space-y-9">
+              {groupByDay(laterEvents).map(([day, daySlots]) => (
+                <section key={day}>
+                  <h3 className="mb-3 text-[0.7rem] uppercase tracking-luxe text-gold">
+                    {cap(
+                      formatDayLabel(
+                        daySlots[0].startsAt,
+                        daySlots[0].utcOffsetMin,
+                      ),
+                    )}
+                  </h3>
+                  <div className="space-y-3">
+                    {daySlots.map((e) => (
+                      <ScheduleSlotItem
+                        key={encodeRef(e.ref)}
+                        slot={e}
+                        refStr={encodeRef(e.ref)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </div>
   );
