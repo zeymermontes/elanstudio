@@ -22,7 +22,10 @@ export async function reserveAction(
           p_weekly: ref.weeklyId,
           p_date: ref.date,
         });
-  if (error) return { ok: false, code: "error" };
+  if (error) {
+    console.error("[reserveAction]", refStr, error.code, error.message);
+    return { ok: false, code: "error" };
+  }
 
   revalidatePath("/cuenta");
   revalidatePath("/horarios");
@@ -38,7 +41,10 @@ export async function cancelAction(
   const { data, error } = await supabase.rpc("cancel_booking", {
     p_session: sessionId,
   });
-  if (error) return { ok: false, code: "error" };
+  if (error) {
+    console.error("[cancelAction]", sessionId, error.code, error.message);
+    return { ok: false, code: "error" };
+  }
 
   revalidatePath("/cuenta");
   revalidatePath("/horarios");
