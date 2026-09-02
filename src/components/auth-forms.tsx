@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import Link from "next/link";
+import { MailCheck, Inbox } from "lucide-react";
 import {
   signInAction,
   signUpAction,
   requestPasswordResetAction,
   updatePasswordAction,
+  resendConfirmationAction,
   type AuthState,
 } from "@/lib/actions/auth";
 
@@ -19,6 +21,62 @@ function ErrorNote({ error }: { error?: string }) {
     <p className="rounded-xl bg-pink-soft/60 px-4 py-3 text-sm text-pink-strong">
       {error}
     </p>
+  );
+}
+
+/**
+ * Aviso de "tu cuenta está sin confirmar" — el mismo al registrarse y al intentar
+ * ingresar sin haber confirmado. Nombra el correo exacto (la usuaria suele
+ * teclearlo mal o no recordar cuál usó), manda a revisar no deseado, que es
+ * donde acaban casi todos, y ofrece reenviarlo sin salir de la página.
+ */
+function PendingEmailNote({
+  message,
+  email,
+}: {
+  message: string;
+  email: string;
+}) {
+  const [pending, start] = useTransition();
+  const [result, setResult] = useState<AuthState>(null);
+
+  return (
+    <div className="space-y-3 rounded-2xl bg-gold-soft/40 px-5 py-5 text-left">
+      <p className="flex items-start gap-2.5 text-sm leading-relaxed text-ink">
+        <MailCheck size={18} strokeWidth={1.5} className="mt-0.5 shrink-0 text-gold" />
+        <span>{message}</span>
+      </p>
+
+      <p className="rounded-xl bg-surface/80 px-4 py-2.5 text-center text-sm font-medium break-all text-ink">
+        {email}
+      </p>
+
+      <p className="flex items-start gap-2.5 text-xs leading-relaxed text-ink-soft">
+        <Inbox size={15} strokeWidth={1.5} className="mt-0.5 shrink-0 text-gold" />
+        <span>
+          ¿No lo ves? Casi siempre está en{" "}
+          <strong className="font-semibold text-ink">correo no deseado</strong>{" "}
+          o spam. Búscalo ahí antes de volver a registrarte.
+        </span>
+      </p>
+
+      {result?.success ? (
+        <p className="text-xs leading-relaxed text-pink-strong">{result.success}</p>
+      ) : result?.error ? (
+        <p className="text-xs leading-relaxed text-pink-strong">{result.error}</p>
+      ) : (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            start(async () => setResult(await resendConfirmationAction(email)))
+          }
+          className="w-full rounded-full border border-gold/50 px-5 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-ink transition-colors hover:border-gold hover:text-pink-strong disabled:opacity-60"
+        >
+          {pending ? "Enviando…" : "Reenviar correo"}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -41,7 +99,14 @@ export function SignInForm({ next }: { next: string }) {
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next} />
-      <ErrorNote error={state?.error} />
+      {state?.pendingEmail ? (
+        <PendingEmailNote
+          message={state.error ?? ""}
+          email={state.pendingEmail}
+        />
+      ) : (
+        <ErrorNote error={state?.error} />
+      )}
       <input
         name="email"
         type="email"
@@ -84,19 +149,22 @@ export function SignUpForm() {
   // After signup with email confirmation, replace the form with a check-inbox note.
   if (state?.success) {
     return (
-      <div className="space-y-4 text-center">
-        <div className="rounded-xl bg-gold-soft/40 px-4 py-4 text-sm leading-relaxed text-ink">
-          {state.success}
-        </div>
-        <p className="text-xs text-ink-soft">
+      <div className="space-y-4">
+        <PendingEmailNote
+          message={state.success}
+          email={state.pendingEmail ?? ""}
+        />
+        <p className="text-center text-xs text-ink-soft">
           Una vez confirmado, podrás ingresar a tu cuenta.
         </p>
-        <Link
-          href="/ingresar"
-          className="inline-flex rounded-full border border-gold/50 px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-ink transition-colors hover:border-gold hover:text-pink-strong"
-        >
-          Ir a ingresar
-        </Link>
+        <div className="text-center">
+          <Link
+            href="/ingresar"
+            className="inline-flex rounded-full border border-gold/50 px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-ink transition-colors hover:border-gold hover:text-pink-strong"
+          >
+            Ir a ingresar
+          </Link>
+        </div>
       </div>
     );
   }

@@ -4,7 +4,16 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-export type AuthState = { error?: string; success?: string } | null;
+export type AuthState = {
+  error?: string;
+  success?: string;
+  /**
+   * Correo que existe pero está sin confirmar. Lo llena tanto el registro
+   * (acabamos de mandar el correo) como un intento de ingreso rechazado por
+   * falta de confirmación, y es lo que habilita el botón de reenviar.
+   */
+  pendingEmail?: string;
+} | null;
 
 const NOT_CONFIGURED =
   "El backend aún no está configurado. Agrega las credenciales de Supabase en .env.local.";
@@ -23,9 +32,58 @@ export async function signInAction(
   if (!supabase) return { error: NOT_CONFIGURED };
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: "Correo o contraseña incorrectos." };
+  if (error) {
+    // La contraseña era correcta pero la cuenta sigue sin confirmar. Decirlo tal
+    // cual: con el mensaje genérico la usuaria cree que se equivocó de
+    // contraseña y la intenta cambiar, cuando el correo está en no deseado.
+    if (isNotConfirmed(error))
+      return {
+        error:
+          "Tu cuenta todavía no está confirmada. Te enviamos un correo cuando te registraste — ábrelo y toca el enlace para activarla.",
+        pendingEmail: email,
+      };
+    return { error: "Correo o contraseña incorrectos." };
+  }
 
   redirect(next || "/cuenta");
+}
+
+/**
+ * ¿El rechazo fue por falta de confirmación? Supabase manda el código
+ * `email_not_confirmed`; el mensaje se revisa como respaldo por si una versión
+ * del servidor de auth aún no lo trae.
+ */
+function isNotConfirmed(error: { code?: string; message: string }): boolean {
+  return (
+    error.code === "email_not_confirmed" ||
+    /email not confirmed/i.test(error.message)
+  );
+}
+
+/**
+ * Reenvía el correo de confirmación del registro. Nunca revela si la cuenta
+ * existe o si ya estaba confirmada: la respuesta es siempre la misma.
+ */
+export async function resendConfirmationAction(
+  email: string,
+): Promise<AuthState> {
+  if (!isSupabaseConfigured()) return { error: NOT_CONFIGURED };
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+
+  const { error } = await supabase.auth.resend({ type: "signup", email });
+  if (error) {
+    console.error("[resendConfirmation]", error.status, error.code, error.message);
+    // El único caso que sí conviene distinguir: Supabase limita los reenvíos.
+    if (error.code === "over_email_send_rate_limit")
+      return {
+        error:
+          "Ya enviamos varios correos en poco tiempo. Espera unos minutos antes de volver a intentarlo.",
+      };
+  }
+  return {
+    success: `Listo, reenviamos el correo a ${email}. Si no aparece en tu bandeja, búscalo en correo no deseado.`,
+  };
 }
 
 export async function signUpAction(
@@ -57,7 +115,8 @@ export async function signUpAction(
   if (data.session) redirect("/cuenta");
   return {
     success:
-      "Te enviamos un correo para confirmar tu cuenta. Revisa tu bandeja de entrada (y la carpeta de spam).",
+      "Ya casi. Te enviamos un correo para confirmar tu cuenta: ábrelo y toca el enlace para activarla.",
+    pendingEmail: email,
   };
 }
 
