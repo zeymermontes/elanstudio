@@ -11,7 +11,6 @@ import { SessionForm } from "@/components/admin/session-form";
 import { WeeklyClassForm } from "@/components/admin/weekly-class-form";
 import { WEEKDAYS } from "@/lib/weekdays";
 import { ScheduleSlotActions } from "@/components/admin/schedule-slot-actions";
-import { EventFeaturedToggle } from "@/components/admin/event-featured-toggle";
 import { Tabs } from "@/components/admin/tabs";
 import { encodeRef } from "@/lib/schedule-ref";
 import { formatDayLabel, formatTime, dayKey, cap } from "@/lib/format";
@@ -158,38 +157,21 @@ export default async function AdminHorarioPage() {
             No hay eventos únicos programados.
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-5">
             {events.map((e) => (
-              <article
-                key={encodeRef(e.ref)}
-                className="surface-card flex flex-col gap-3 rounded-xl px-5 py-4 shadow-soft"
-              >
-                <div>
-                  <p className="font-serif text-lg text-ink">
-                    {cap(formatDayLabel(e.startsAt, e.utcOffsetMin))} ·{" "}
-                    {formatTime(e.startsAt, e.utcOffsetMin)}
-                  </p>
-                  <p className="text-xs text-ink-soft">
-                    {e.classType.name} · {e.coach?.name ?? "Sin coach"}
-                    {e.location?.name ? ` · ${e.location.name}` : ""} ·{" "}
-                    {e.booked}/{e.capacity} reservas
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-4">
-                  {e.ref.kind === "session" ? (
-                    <EventFeaturedToggle
-                      sessionId={e.ref.sessionId}
-                      featured={e.featured}
-                    />
-                  ) : null}
-                  <ScheduleSlotActions
-                    refStr={encodeRef(e.ref)}
-                    coaches={coaches}
-                    currentCoachId={e.coach?.id ?? null}
-                    sessionId={e.ref.kind === "session" ? e.ref.sessionId : null}
-                  />
-                </div>
-              </article>
+              <div key={encodeRef(e.ref)}>
+                <p className="mb-2 text-xs text-ink-soft">
+                  {cap(formatDayLabel(e.startsAt, e.utcOffsetMin))} ·{" "}
+                  {formatTime(e.startsAt, e.utcOffsetMin)} · {e.booked}/
+                  {e.capacity} reservas
+                </p>
+                <SessionForm
+                  event={e}
+                  classTypes={classTypes}
+                  coaches={coaches}
+                  locations={locations}
+                />
+              </div>
             ))}
           </div>
         )}

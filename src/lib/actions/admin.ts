@@ -326,13 +326,20 @@ export async function deleteClassTypeAction(id: string): Promise<FormState> {
 // ---------------------------------------------------------------------------
 // Schedule (class sessions)
 // ---------------------------------------------------------------------------
-export async function createSessionAction(
+/**
+ * Alta y edición de un evento único. Un `id` vacío es alta; con `id` se
+ * actualiza. Al editar se recalcula todo desde cero — hora y duración incluidas
+ * — porque cambiar la sede cambia el huso en el que se lee la hora escrita, y
+ * cambiar la clase cambia cuánto dura.
+ */
+export async function saveSessionAction(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
   const supabase = await adminClient();
   if (!supabase) return { error: NOT_CONFIGURED };
 
+  const id = str(fd, "id");
   const classTypeId = str(fd, "class_type_id");
   const startsAtLocal = str(fd, "starts_at"); // from <input type=datetime-local>
   const locationId = str(fd, "location_id") || null;
@@ -363,7 +370,7 @@ export async function createSessionAction(
   const ends = new Date(starts.getTime() + duration * 60000);
   const capacity = num(fd, "capacity") || ct?.default_capacity || 10;
 
-  const { error } = await supabase.from("class_sessions").insert({
+  const row = {
     class_type_id: classTypeId,
     coach_id: str(fd, "coach_id") || null,
     location_id: locationId,
@@ -371,7 +378,18 @@ export async function createSessionAction(
     ends_at: ends.toISOString(),
     capacity,
     featured: fd.get("featured") === "on",
-  });
+  };
+
+  // El filtro por weekly_class_id null es un cinturón de seguridad: este
+  // formulario es solo para eventos únicos y no debe poder reescribir una
+  // sesión materializada de la plantilla semanal.
+  const { error } = id
+    ? await supabase
+        .from("class_sessions")
+        .update(row)
+        .eq("id", id)
+        .is("weekly_class_id", null)
+    : await supabase.from("class_sessions").insert(row);
 
   if (error) return { error: error.message };
   revalidatePath("/admin/horario");
@@ -381,22 +399,17 @@ export async function createSessionAction(
 }
 
 /**
- * Flip whether a one-off event is announced on the landing page. Separate from
- * creation so a forgotten checkbox — or an event that filled up — can be fixed
- * without deleting and re-creating it.
+ * Cancela un evento único y reembolsa a quien ya había reservado. Es la salida
+ * correcta cuando el evento tiene gente dentro: borrarlo se llevaría sus
+ * reservas por cascada, sin devolverles la clase.
  */
-export async function toggleSessionFeaturedAction(
-  id: string,
-  featured: boolean,
-): Promise<FormState> {
+export async function cancelEventAction(id: string): Promise<FormState> {
   const supabase = await adminClient();
   if (!supabase) return { error: NOT_CONFIGURED };
-  const { error } = await supabase
-    .from("class_sessions")
-    .update({ featured })
-    .eq("id", id);
+  const { error } = await supabase.rpc("cancel_session", { p_session: id });
   if (error) return { error: error.message };
   revalidatePath("/admin/horario");
+  revalidatePath("/horarios");
   revalidatePath("/");
   return { ok: true };
 }
