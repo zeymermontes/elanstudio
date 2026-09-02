@@ -31,12 +31,20 @@ export function EmbeddedCheckout({
   amount,
   publicKey,
   initialPromo = null,
+  payerEmail = null,
 }: {
   packageId: string;
   /** List price of the package, before any discount. */
   amount: number;
   publicKey: string;
   initialPromo?: CheckoutPromo | null;
+  /**
+   * Correo de la sesión. Se le pasa al Brick para que llegue precargado: es un
+   * dato que ya conocemos y que la compradora no tiene por qué volver a
+   * teclear, y quita de en medio el campo donde el autocompletado del teléfono
+   * dejaba texto visible que el Brick no registraba como llenado.
+   */
+  payerEmail?: string | null;
 }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -169,7 +177,10 @@ export function EmbeddedCheckout({
            * charged another.
            */
           key={total}
-          initialization={{ amount: total }}
+          initialization={{
+            amount: total,
+            ...(payerEmail ? { payer: { email: payerEmail } } : {}),
+          }}
           customization={{
             visual: {
               style: {
@@ -209,9 +220,18 @@ export function EmbeddedCheckout({
               setError(data.message ?? paymentRejectionMessage(null));
             }
           }}
-          onError={() =>
-            setError("Ocurrió un error con el formulario de pago.")
-          }
+          onError={(err) => {
+            // Hay un caso abierto sin explicación: campos escritos a mano que el
+            // Brick marca como "Dato obligatorio". No sabemos la causa y no
+            // vamos a adivinarla, así que lo que toca es dejar rastro. Cuando
+            // vuelva a pasar, la causa real estará en los logs.
+            console.error("[CardPayment]", err?.type, err?.cause, err?.message);
+            // Solo los 'critical' se le muestran a la compradora. Un
+            // 'non_critical' es una validación que el Brick ya pinta junto al
+            // campo; repetirla arriba solo confunde.
+            if (err?.type === "critical")
+              setError("Ocurrió un error con el formulario de pago.");
+          }}
         />
       )}
     </div>

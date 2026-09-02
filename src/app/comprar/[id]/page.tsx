@@ -24,10 +24,12 @@ export default async function ComprarPage({
 
   // Must be signed in to buy.
   let userId: string | null = null;
+  let userEmail: string | null = null;
   if (isSupabaseConfigured()) {
     const user = await getCurrentUser();
     if (!user) redirect(`/ingresar?next=/comprar/${id}`);
     userId = user.id;
+    userEmail = user.email ?? null;
   }
 
   const pkg = await getPackageById(id);
@@ -112,6 +114,7 @@ export default async function ComprarPage({
               packageId={pkg.id}
               amount={pkg.priceMxn}
               publicKey={publicKey}
+              payerEmail={userEmail}
               initialPromo={
                 promo
                   ? {
