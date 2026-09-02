@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowRight, Clock, MapPin, User } from "lucide-react";
+import { ArrowRight, Clock, User } from "lucide-react";
 import { cap, dateBadge, formatDayLabel, formatTime } from "@/lib/format";
 import { encodeRef } from "@/lib/schedule-ref";
+import { LocationChip } from "@/components/location-chip";
 import type { ScheduleSlot } from "@/lib/types";
 
 /**
@@ -59,11 +60,7 @@ function EventCard({ event: e }: { event: ScheduleSlot }) {
               <User size={12} strokeWidth={1.5} /> {e.coach.name}
             </span>
           ) : null}
-          {e.location ? (
-            <span className="inline-flex items-center gap-1">
-              <MapPin size={12} strokeWidth={1.5} /> {e.location.name}
-            </span>
-          ) : null}
+          {e.location ? <LocationChip location={e.location} /> : null}
           <span
             className={`inline-flex items-center gap-1 ${
               full ? "text-ink-soft" : "text-gold"

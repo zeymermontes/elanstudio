@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Clock, MapPin, User, X, Signal, ArrowRight } from "lucide-react";
+import { Clock, User, X, Signal, ArrowRight } from "lucide-react";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
 import { ReserveButton } from "@/components/reserve-button";
+import { LocationChip } from "@/components/location-chip";
 import type { ScheduleSlot } from "@/lib/types";
 
 /**
@@ -25,38 +26,40 @@ export function ScheduleSlotItem({
     <>
       <article className="surface-card flex flex-col gap-4 rounded-2xl px-6 py-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
         {/* Click the info to open the detail modal */}
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="flex items-center gap-5 text-left"
-        >
-          <div className="text-center">
+        <div className="flex items-center gap-5 text-left">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="shrink-0 text-center"
+          >
             <p className="font-serif text-xl text-pink-strong">
               {formatTime(slot.startsAt, slot.utcOffsetMin)}
             </p>
             <p className="text-[0.65rem] uppercase tracking-[0.12em] text-ink-soft">
               {slot.classType.durationMin} min
             </p>
-          </div>
-          <div className="h-12 w-px bg-line" />
+          </button>
+          <div className="h-12 w-px shrink-0 bg-line" />
           <div>
-            <h3 className="font-serif text-xl text-ink transition-colors hover:text-pink-strong">
-              {slot.classType.name}
-            </h3>
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="text-left"
+            >
+              <h3 className="font-serif text-xl text-ink transition-colors hover:text-pink-strong">
+                {slot.classType.name}
+              </h3>
+            </button>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
               {slot.coach ? (
                 <span className="inline-flex items-center gap-1">
                   <User size={12} strokeWidth={1.5} /> {slot.coach.name}
                 </span>
               ) : null}
-              {slot.location ? (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin size={12} strokeWidth={1.5} /> {slot.location.name}
-                </span>
-              ) : null}
+              {slot.location ? <LocationChip location={slot.location} /> : null}
             </div>
           </div>
-        </button>
+        </div>
 
         <div className="flex items-center justify-between gap-4 sm:justify-end">
           <span
@@ -129,9 +132,10 @@ function Modal({
             <Signal size={13} strokeWidth={1.5} /> {slot.classType.level}
           </span>
           {slot.location ? (
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin size={13} strokeWidth={1.5} /> {slot.location.name}
-            </span>
+            <LocationChip
+              location={slot.location}
+              className="uppercase tracking-[0.12em]"
+            />
           ) : null}
         </div>
 
