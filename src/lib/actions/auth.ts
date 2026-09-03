@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type AuthState = {
   error?: string;
@@ -13,6 +14,8 @@ export type AuthState = {
    * falta de confirmación, y es lo que habilita el botón de reenviar.
    */
   pendingEmail?: string;
+  /** El correo ya estaba confirmado: no hay nada que reenviar, toca ingresar. */
+  alreadyConfirmed?: boolean;
 } | null;
 
 const NOT_CONFIGURED =
@@ -71,6 +74,15 @@ export async function resendConfirmationAction(
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: NOT_CONFIGURED };
 
+  // Si la cuenta ya está confirmada no hay nada que reenviar, y callarlo deja a
+  // la persona esperando un correo que nunca va a llegar.
+  if (await isAlreadyConfirmed(email))
+    return {
+      alreadyConfirmed: true,
+      success:
+        "Tu correo ya está confirmado. Solo inicia sesión con tu contraseña.",
+    };
+
   const { error } = await supabase.auth.resend({ type: "signup", email });
   if (error) {
     console.error("[resendConfirmation]", error.status, error.code, error.message);
@@ -84,6 +96,36 @@ export async function resendConfirmationAction(
   return {
     success: `Listo, reenviamos el correo a ${email}. Si no aparece en tu bandeja, búscalo en correo no deseado.`,
   };
+}
+
+/**
+ * ¿Esa cuenta ya tiene el correo confirmado? Se consulta con la clave de
+ * servicio porque el cliente público no puede ver el estado de otra cuenta.
+ *
+ * Ante cualquier duda devuelve false: preferimos reenviar un correo de más a
+ * mandar a ingresar a alguien que todavía no puede.
+ */
+async function isAlreadyConfirmed(email: string): Promise<boolean> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return false;
+  const target = email.trim().toLowerCase();
+  try {
+    for (let page = 1; page <= 10; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({
+        page,
+        perPage: 200,
+      });
+      if (error || !data) return false;
+      const hit = data.users.find(
+        (u) => (u.email ?? "").toLowerCase() === target,
+      );
+      if (hit) return Boolean(hit.email_confirmed_at);
+      if (data.users.length < 200) return false;
+    }
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 export async function signUpAction(

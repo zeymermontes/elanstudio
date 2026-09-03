@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import Link from "next/link";
-import { MailCheck, Inbox } from "lucide-react";
+import { MailCheck, Inbox, CheckCircle2 } from "lucide-react";
 import {
   signInAction,
   signUpAction,
@@ -33,9 +33,12 @@ function ErrorNote({ error }: { error?: string }) {
 function PendingEmailNote({
   message,
   email,
+  onSignInPage = false,
 }: {
   message: string;
   email: string;
+  /** En /ingresar el formulario ya está debajo: sobra mandarla a otro lado. */
+  onSignInPage?: boolean;
 }) {
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AuthState>(null);
@@ -60,7 +63,30 @@ function PendingEmailNote({
         </span>
       </p>
 
-      {result?.success ? (
+      {result?.alreadyConfirmed ? (
+        <div className="space-y-3">
+          <p className="flex items-start gap-2.5 text-sm leading-relaxed text-ink">
+            <CheckCircle2
+              size={18}
+              strokeWidth={1.5}
+              className="mt-0.5 shrink-0 text-gold"
+            />
+            <span>{result.success}</span>
+          </p>
+          {onSignInPage ? (
+            <p className="text-xs leading-relaxed text-ink-soft">
+              Escribe tu contraseña aquí abajo para entrar.
+            </p>
+          ) : (
+            <Link
+              href="/ingresar"
+              className="block rounded-full bg-pink px-5 py-2.5 text-center text-[0.75rem] uppercase tracking-[0.15em] text-white shadow-soft transition-colors hover:bg-pink-strong"
+            >
+              Ir a ingresar
+            </Link>
+          )}
+        </div>
+      ) : result?.success ? (
         <p className="text-xs leading-relaxed text-pink-strong">{result.success}</p>
       ) : result?.error ? (
         <p className="text-xs leading-relaxed text-pink-strong">{result.error}</p>
@@ -103,6 +129,7 @@ export function SignInForm({ next }: { next: string }) {
         <PendingEmailNote
           message={state.error ?? ""}
           email={state.pendingEmail}
+          onSignInPage
         />
       ) : (
         <ErrorNote error={state?.error} />
