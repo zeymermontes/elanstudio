@@ -6,7 +6,7 @@ import {
   whatsappUrl,
   type SiteSettings,
 } from "@/lib/site";
-import { BUILD_VERSION } from "@/lib/version";
+import { APP_VERSION } from "@/lib/version";
 
 export function SiteFooter({
   settings = defaultSettings,
@@ -94,7 +94,7 @@ export function SiteFooter({
           <p className="uppercase tracking-luxe">
             {s.tagline}{" "}
             <span className="ml-2 normal-case tracking-normal text-ink-soft/50">
-              v{BUILD_VERSION}
+              v{APP_VERSION}
             </span>
           </p>
         </div>

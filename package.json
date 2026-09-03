@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "monitor": "bash scripts/monitor.sh"
+    "monitor": "bash scripts/monitor.sh",
+    "publicar": "bash scripts/publicar.sh"
   },
   "dependencies": {
     "@mercadopago/sdk-react": "^1.0.7",

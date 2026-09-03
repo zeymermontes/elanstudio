@@ -5,16 +5,11 @@ import pkg from "../../package.json";
  *
  * Cuando alguien reporta que ve una hora vieja o un texto que ya arreglamos, lo
  * primero que hay que saber es si su navegador está sirviendo el build nuevo o
- * uno anterior. Sin esto solo se puede adivinar.
+ * uno anterior. Sin esto solo se puede adivinar: se le pide que mire el pie de
+ * página y se compara con el número publicado.
  *
- * Son dos datos porque cada uno sirve para algo distinto: el número de versión
- * (package.json) se sube a mano y es el que se le pide a una alumna por
- * teléfono; el commit lo pone Render solo en cada deploy, así que identifica el
- * build exacto aunque se nos olvide subir el número. En local no hay commit.
+ * Para que ese número sirva tiene que subir en cada publicación, así que no se
+ * toca a mano: lo sube `npm run publicar` (scripts/publicar.sh) justo antes de
+ * empujar a main, que es lo que dispara el deploy en Render.
  */
 export const APP_VERSION = pkg.version;
-
-export const BUILD_COMMIT = process.env.RENDER_GIT_COMMIT?.slice(0, 7) || "local";
-
-/** Semver con metadatos de build: "1.0.0+a1b2c3d". */
-export const BUILD_VERSION = `${APP_VERSION}+${BUILD_COMMIT}`;
