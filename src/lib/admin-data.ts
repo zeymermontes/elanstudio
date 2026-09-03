@@ -148,7 +148,9 @@ export async function getMemberDetail(
       admin
         .from("bookings")
         .select(
-          "session_id, status, attended, created_at, class_sessions(starts_at, class_types(name), coaches(name))",
+          // locations viene por su huso: sin él relOffset cae al default y la
+          // hora se pinta con una hora de más para una sede que no es UTC-6.
+          "session_id, status, attended, created_at, class_sessions(starts_at, class_types(name), coaches(name), locations(utc_offset_minutes))",
         )
         .eq("user_id", id)
         .eq("status", "confirmed")
@@ -181,7 +183,7 @@ export async function getMemberDetail(
         starts_at: string;
         class_types: { name: string } | { name: string }[] | null;
         coaches: { name: string } | { name: string }[] | null;
-        locations: unknown;
+        locations: { utc_offset_minutes: number } | { utc_offset_minutes: number }[] | null;
       } | null;
     }[]
   ).map((b) => ({
