@@ -14,10 +14,13 @@ import { DeleteButton } from "./delete-button";
 export function PromotionForm({
   promo,
   packages,
+  utcOffsetMin,
 }: {
   promo?: PromotionWithScope;
   /** One-time packages only — the monthly plan can't be discounted. */
   packages: Package[];
+  /** Huso del estudio: la vigencia se escribe y se lee en hora local. */
+  utcOffsetMin: number;
 }) {
   const [state, action] = useActionState<FormState, FormData>(
     savePromotionAction,
@@ -90,7 +93,7 @@ export function PromotionForm({
             <input
               name="starts_at"
               type="datetime-local"
-              defaultValue={toDateTimeLocal(promo?.startsAt ?? null)}
+              defaultValue={toDateTimeLocal(promo?.startsAt ?? null, utcOffsetMin)}
               className={inputClass}
             />
           </Field>
@@ -98,7 +101,7 @@ export function PromotionForm({
             <input
               name="ends_at"
               type="datetime-local"
-              defaultValue={toDateTimeLocal(promo?.endsAt ?? null)}
+              defaultValue={toDateTimeLocal(promo?.endsAt ?? null, utcOffsetMin)}
               className={inputClass}
             />
           </Field>

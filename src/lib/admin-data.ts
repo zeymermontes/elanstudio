@@ -5,7 +5,7 @@
  */
 import { createSupabaseAdminClient } from "./supabase/admin";
 import { DEFAULT_UTC_OFFSET_MIN, dayKey } from "./format";
-import { getAllPackages } from "./data";
+import { getAllPackages, getStudioUtcOffset } from "./data";
 import { resolveStockFor, type PackageStock } from "./stock";
 import type { Package, PromotionWithScope } from "./types";
 
@@ -74,6 +74,8 @@ export async function listMembers(): Promise<MemberRow[]> {
 }
 
 export type MemberBooking = {
+  /** Huso de la sede de esa clase — cómo se debe mostrar su hora. */
+  utcOffsetMin: number;
   sessionId: string;
   startsAt: string | null;
   className: string;
@@ -179,11 +181,13 @@ export async function getMemberDetail(
         starts_at: string;
         class_types: { name: string } | { name: string }[] | null;
         coaches: { name: string } | { name: string }[] | null;
+        locations: unknown;
       } | null;
     }[]
   ).map((b) => ({
     sessionId: b.session_id,
     startsAt: b.class_sessions?.starts_at ?? null,
+    utcOffsetMin: relOffset(b.class_sessions?.locations ?? null),
     className: firstName(b.class_sessions?.class_types ?? null) || "Clase",
     coach: firstName(b.class_sessions?.coaches ?? null),
     attended: b.attended,
@@ -219,6 +223,7 @@ export type RosterEntry = {
 export type SessionRoster = {
   id: string;
   startsAt: string;
+  utcOffsetMin: number;
   className: string;
   coach: string;
   location: string;
@@ -250,7 +255,8 @@ export async function getUpcomingBirthdays(
   // and only "today" is anchored to the studio's offset. Building the dates in
   // the server's local zone instead would land every birthday a day early once
   // deployed — Render runs in UTC, a developer's machine doesn't.
-  const nowLocal = new Date(Date.now() + DEFAULT_UTC_OFFSET_MIN * 60000);
+  const studioOffset = await getStudioUtcOffset();
+  const nowLocal = new Date(Date.now() + studioOffset * 60000);
   const thisYear = nowLocal.getUTCFullYear();
   const today = Date.UTC(
     thisYear,
@@ -285,6 +291,7 @@ export type BirthdayBooking = {
   name: string;
   className: string;
   startsAt: string;
+  utcOffsetMin: number;
 };
 
 /**
@@ -299,7 +306,9 @@ export async function getBirthdayBookings(
 
   const { data: bookings } = await admin
     .from("bookings")
-    .select("user_id, class_sessions(starts_at, class_types(name))")
+    .select(
+      "user_id, class_sessions(starts_at, class_types(name), locations(utc_offset_minutes))",
+    )
     .eq("status", "confirmed");
   if (!bookings?.length) return [];
 
@@ -318,7 +327,8 @@ export async function getBirthdayBookings(
 
   // Same reasoning as getUpcomingBirthdays: anchor "today" to the studio's
   // offset rather than the server's clock.
-  const nowLocal = new Date(Date.now() + DEFAULT_UTC_OFFSET_MIN * 60000);
+  const studioOffset = await getStudioUtcOffset();
+  const nowLocal = new Date(Date.now() + studioOffset * 60000);
   const today = Date.UTC(
     nowLocal.getUTCFullYear(),
     nowLocal.getUTCMonth(),
@@ -334,22 +344,27 @@ export async function getBirthdayBookings(
       | {
           starts_at: string;
           class_types: { name: string } | { name: string }[] | null;
+          locations: unknown;
         }
-      | { starts_at: string; class_types: unknown }[]
+      | { starts_at: string; class_types: unknown; locations: unknown }[]
       | null;
     const session = Array.isArray(cs) ? cs[0] : cs;
     if (!session?.starts_at) continue;
+    const offsetMin = relOffset(session.locations);
     const t = new Date(session.starts_at).getTime();
     if (t < today || t > max) continue;
     // Compare the class's wall-clock date at the studio, not the server's: a
     // 7pm CDMX class is already the next day in UTC, which would match the
     // wrong birthday.
-    const [, sm, sd] = dayKey(session.starts_at).split("-").map(Number);
+    const [, sm, sd] = dayKey(session.starts_at, offsetMin)
+      .split("-")
+      .map(Number);
     if (sm === bd.month && sd === bd.day) {
       out.push({
         name: bd.name,
         className: firstName(session.class_types as never) || "Clase",
         startsAt: session.starts_at,
+        utcOffsetMin: offsetMin,
       });
     }
   }
@@ -360,6 +375,7 @@ export type ReservationSession = {
   sessionId: string;
   className: string;
   startsAt: string;
+  utcOffsetMin: number;
   endsAt: string;
   coach: string;
   location: string;
@@ -367,6 +383,16 @@ export type ReservationSession = {
 };
 
 type RelName = { name: string } | { name: string }[] | null;
+
+/**
+ * Huso de una sede embebida en una consulta. Cae a UTC-6 solo si la sesión no
+ * tiene sede; nunca se usa como "default de formato" (ver lib/format.ts).
+ */
+function relOffset(rel: unknown): number {
+  const r = Array.isArray(rel) ? rel[0] : rel;
+  const v = (r as { utc_offset_minutes?: number } | null)?.utc_offset_minutes;
+  return typeof v === "number" ? v : DEFAULT_UTC_OFFSET_MIN;
+}
 
 /**
  * Reservations grouped by class session, within a window around now. Only
@@ -387,7 +413,7 @@ export async function getReservationsBySession(
   let query = admin
     .from("class_sessions")
     .select(
-      "id, starts_at, ends_at, class_types(name), coaches(name), locations(name)",
+      "id, starts_at, ends_at, class_types(name), coaches(name), locations(name, utc_offset_minutes)",
     )
     .eq("status", "scheduled")
     .gte("starts_at", from)
@@ -437,12 +463,13 @@ export async function getReservationsBySession(
         ends_at: string;
         class_types: RelName;
         coaches: RelName;
-        locations: RelName;
+        locations: RelName | ({ name: string; utc_offset_minutes: number } | { name: string; utc_offset_minutes: number }[]);
       };
       return {
         sessionId: sx.id,
         className: firstName(sx.class_types) || "Clase",
         startsAt: sx.starts_at,
+        utcOffsetMin: relOffset(sx.locations),
         endsAt: sx.ends_at,
         coach: firstName(sx.coaches),
         location: firstName(sx.locations),
@@ -491,7 +518,7 @@ export async function getSessionRoster(
   const { data: session } = await admin
     .from("class_sessions")
     .select(
-      "starts_at, capacity, class_types(name), coaches(name), locations(name)",
+      "starts_at, capacity, class_types(name), coaches(name), locations(name, utc_offset_minutes)",
     )
     .eq("id", sessionId)
     .single();
@@ -540,6 +567,7 @@ export async function getSessionRoster(
   return {
     id: sessionId,
     startsAt: s.starts_at,
+    utcOffsetMin: relOffset(s.locations),
     className: firstName(s.class_types) || "Clase",
     coach: firstName(s.coaches),
     location: firstName(s.locations),

@@ -40,7 +40,8 @@ export default async function RosterPage({
 
       <h1 className="font-serif text-4xl text-ink">{data.className}</h1>
       <p className="mt-1 text-sm text-ink-soft">
-        {cap(formatDayLabel(data.startsAt))} · {formatTime(data.startsAt)}
+        {cap(formatDayLabel(data.startsAt, data.utcOffsetMin))} ·{" "}
+        {formatTime(data.startsAt, data.utcOffsetMin)}
         {data.coach ? ` · ${data.coach}` : ""}
         {data.location ? ` · ${data.location}` : ""}
       </p>

@@ -13,7 +13,8 @@ function SessionCard({ s, past }: { s: ReservationSession; past: boolean }) {
         <div>
           <h3 className="font-serif text-xl text-ink">{s.className}</h3>
           <p className="mt-0.5 text-xs text-ink-soft">
-            {cap(formatDayLabel(s.startsAt))} · {formatTime(s.startsAt)}
+            {cap(formatDayLabel(s.startsAt, s.utcOffsetMin))} ·{" "}
+            {formatTime(s.startsAt, s.utcOffsetMin)}
             {s.coach ? ` · ${s.coach}` : ""}
             {s.location ? ` · ${s.location}` : ""}
           </p>

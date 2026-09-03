@@ -50,6 +50,17 @@ export async function getSettings(): Promise<SiteSettings> {
   };
 }
 
+/**
+ * Huso del estudio, para las horas que no cuelgan de una sede concreta: fechas
+ * de promociones, historial, cumpleaños. Se toma de la primera sede en vez de
+ * fijarlo en el código, porque tenerlo fijo en UTC-6 hacía que un estudio en
+ * Culiacán (UTC-7) viera todo con una hora de más.
+ */
+export async function getStudioUtcOffset(): Promise<number> {
+  const locations = await getLocations();
+  return locations[0]?.utcOffsetMin ?? DEFAULT_UTC_OFFSET_MIN;
+}
+
 export async function getServices(): Promise<Service[]> {
   const supabase = await createSupabaseServerClient();
   if (!supabase)

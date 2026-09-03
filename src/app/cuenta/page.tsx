@@ -13,7 +13,18 @@ import {
 import { canCancelBooking, CANCEL_WINDOW_NOTE } from "@/lib/booking-rules";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { decodeRef } from "@/lib/schedule-ref";
-import { formatDayLabel, formatTime, cap } from "@/lib/format";
+import {
+  formatDayLabel,
+  formatTime,
+  cap,
+  zonedToUtc,
+  DEFAULT_UTC_OFFSET_MIN,
+} from "@/lib/format";
+
+/** Huso con el que se muestra la hora de una reserva: el de la sede de su clase. */
+function bookingOffset(cs: { locations: { utc_offset_minutes: number } | null }) {
+  return cs.locations?.utc_offset_minutes ?? DEFAULT_UTC_OFFSET_MIN;
+}
 
 export const metadata: Metadata = { title: "Mi cuenta" };
 export const dynamic = "force-dynamic";
@@ -25,7 +36,7 @@ type BookingRow = {
     status: string;
     class_types: { name: string; duration_min: number } | null;
     coaches: { name: string } | null;
-    locations: { name: string } | null;
+    locations: { name: string; utc_offset_minutes: number } | null;
   } | null;
 };
 
@@ -72,7 +83,7 @@ export default async function CuentaPage({
       supabase
         .from("bookings")
         .select(
-          "session_id, class_sessions!inner(starts_at, status, class_types(name, duration_min), coaches(name), locations(name))",
+          "session_id, class_sessions!inner(starts_at, status, class_types(name, duration_min), coaches(name), locations(name, utc_offset_minutes))",
         )
         .eq("user_id", user.id)
         .eq("status", "confirmed"),
@@ -111,39 +122,51 @@ export default async function CuentaPage({
   if (reserveRef?.kind === "session") {
     const { data: sess } = await supabase
       .from("class_sessions")
-      .select("starts_at, class_types(name)")
+      .select("starts_at, class_types(name), locations(utc_offset_minutes)")
       .eq("id", reserveRef.sessionId)
       .single();
     if (sess) {
       const raw = sess as unknown as {
         starts_at: string;
         class_types: { name: string } | { name: string }[] | null;
+        locations: { utc_offset_minutes: number } | null;
       };
       const ct = Array.isArray(raw.class_types)
         ? raw.class_types[0]
         : raw.class_types;
+      const off = raw.locations?.utc_offset_minutes ?? DEFAULT_UTC_OFFSET_MIN;
       reservarLabel = `${ct?.name ?? "Clase"} · ${cap(
-        formatDayLabel(raw.starts_at),
-      )} ${formatTime(raw.starts_at)}`;
+        formatDayLabel(raw.starts_at, off),
+      )} ${formatTime(raw.starts_at, off)}`;
     }
   } else if (reserveRef?.kind === "weekly") {
     const { data: wc } = await supabase
       .from("weekly_classes")
-      .select("start_time, class_types(name)")
+      .select("start_time, class_types(name), locations(utc_offset_minutes)")
       .eq("id", reserveRef.weeklyId)
       .single();
     if (wc) {
       const raw = wc as unknown as {
         start_time: string;
         class_types: { name: string } | { name: string }[] | null;
+        locations: { utc_offset_minutes: number } | null;
       };
       const ct = Array.isArray(raw.class_types)
         ? raw.class_types[0]
         : raw.class_types;
-      const startsAt = `${reserveRef.date}T${String(raw.start_time).slice(0, 5)}:00`;
+      const off = raw.locations?.utc_offset_minutes ?? DEFAULT_UTC_OFFSET_MIN;
+      // La plantilla guarda una hora de pared suelta. Anclarla al huso de la
+      // sede: concatenar "fecha T hora" dejaba una cadena sin zona, que
+      // JavaScript interpretaba en la del servidor — en Render, UTC — y una
+      // clase de 8:30 a.m. se anunciaba como 2:30 a.m.
+      const startsAt = zonedToUtc(
+        reserveRef.date,
+        String(raw.start_time).slice(0, 5),
+        off,
+      ).toISOString();
       reservarLabel = `${ct?.name ?? "Clase"} · ${cap(
-        formatDayLabel(startsAt),
-      )} ${formatTime(startsAt)}`;
+        formatDayLabel(startsAt, off),
+      )} ${formatTime(startsAt, off)}`;
     }
   }
 
@@ -245,7 +268,10 @@ export default async function CuentaPage({
                     {cs.class_types?.name}
                   </h3>
                   <p className="mt-1 text-xs text-ink-soft">
-                    {cap(formatDayLabel(cs.starts_at))} · {formatTime(cs.starts_at)}
+                    {cap(
+                      formatDayLabel(cs.starts_at, bookingOffset(cs)),
+                    )}{" "}
+                    · {formatTime(cs.starts_at, bookingOffset(cs))}
                     {cs.coaches?.name ? ` · ${cs.coaches.name}` : ""}
                     {cs.locations?.name ? ` · ${cs.locations.name}` : ""}
                   </p>

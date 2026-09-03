@@ -125,8 +125,8 @@ export default async function AdminDashboard() {
               >
                 <span className="font-medium text-ink">{b.name}</span>
                 <span className="text-ink-soft">
-                  {b.className} · {cap(formatDayLabel(b.startsAt))} ·{" "}
-                  {formatTime(b.startsAt)}
+                  {b.className} · {cap(formatDayLabel(b.startsAt, b.utcOffsetMin))} ·{" "}
+                  {formatTime(b.startsAt, b.utcOffsetMin)}
                 </span>
               </li>
             ))}

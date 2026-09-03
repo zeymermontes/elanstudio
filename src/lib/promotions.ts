@@ -8,13 +8,9 @@
  * Scope is one-time packages only; recurring ones always resolve to no discount.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  formatDayLabel,
-  formatTime,
-  cap,
-  DEFAULT_UTC_OFFSET_MIN,
-} from "./format";
+import { formatDayLabel, formatTime, cap } from "./format";
 import type { Package, Promotion } from "./types";
+import { getStudioUtcOffset } from "./data";
 
 /**
  * Mercado Pago rejects payments below a small floor, so a discount that would
@@ -60,15 +56,13 @@ export function calcDiscount(
  * el 17" would be wrong by a full day — name the previous day instead. Any
  * other end time is spelled out, since it isn't obvious from the date alone.
  */
-function endLabel(endsAt: string): string {
-  const local = new Date(
-    new Date(endsAt).getTime() + DEFAULT_UTC_OFFSET_MIN * 60000,
-  );
+function endLabel(endsAt: string, offsetMin: number): string {
+  const local = new Date(new Date(endsAt).getTime() + offsetMin * 60000);
   if (local.getUTCHours() === 0 && local.getUTCMinutes() === 0) {
     const lastDay = new Date(new Date(endsAt).getTime() - 60000).toISOString();
-    return cap(formatDayLabel(lastDay));
+    return cap(formatDayLabel(lastDay, offsetMin));
   }
-  return `${cap(formatDayLabel(endsAt))} a las ${formatTime(endsAt)}`;
+  return `${cap(formatDayLabel(endsAt, offsetMin))} a las ${formatTime(endsAt, offsetMin)}`;
 }
 
 /**
@@ -78,11 +72,17 @@ function endLabel(endsAt: string): string {
  * can never drift from what the checkout actually enforces. Deliberately omits
  * the code itself — the terms are shown publicly on /paquetes.
  */
-export function promoTerms(promo: Promotion, scoped = false): string[] {
+export function promoTerms(
+  promo: Promotion,
+  scoped: boolean,
+  offsetMin: number,
+): string[] {
   const terms: string[] = [];
 
-  const from = promo.startsAt ? cap(formatDayLabel(promo.startsAt)) : null;
-  const to = promo.endsAt ? endLabel(promo.endsAt) : null;
+  const from = promo.startsAt
+    ? cap(formatDayLabel(promo.startsAt, offsetMin))
+    : null;
+  const to = promo.endsAt ? endLabel(promo.endsAt, offsetMin) : null;
   // The time part ("6:00 p.m.") already ends in a period — don't add a second.
   const stop = (s: string) => (s.endsWith(".") ? s : `${s}.`);
   if (from && to) terms.push(stop(`Vigente del ${from} al ${to}`));
@@ -117,7 +117,8 @@ export function promoTerms(promo: Promotion, scoped = false): string[] {
 export function applyPromotion(
   promo: Promotion,
   priceMxn: number,
-  scoped = false,
+  scoped: boolean,
+  offsetMin: number,
 ): AppliedPromo | null {
   const discountMxn = calcDiscount(promo.kind, promo.value, priceMxn);
   if (discountMxn <= 0) return null;
@@ -127,7 +128,7 @@ export function applyPromotion(
     promotion: promo,
     discountMxn,
     finalMxn,
-    terms: promoTerms(promo, scoped),
+    terms: promoTerms(promo, scoped, offsetMin),
   };
 }
 
@@ -236,6 +237,9 @@ export async function resolvePromotion(
   const { data } = await query;
   if (!data?.length) return null;
 
+  // Las fechas de vigencia se anuncian en el huso del estudio.
+  const offsetMin = await getStudioUtcOffset();
+
   // Best discount wins; they never stack. Two promos combining into a price
   // nobody signed off on is worse than leaving money on the table.
   let best: AppliedPromo | null = null;
@@ -247,7 +251,12 @@ export async function resolvePromotion(
     const scope = (row.promotion_packages ?? []) as { package_id: string }[];
     if (scope.length && !scope.some((s) => s.package_id === pkg.id)) continue;
 
-    const candidate = applyPromotion(promo, pkg.priceMxn, scope.length > 0);
+    const candidate = applyPromotion(
+      promo,
+      pkg.priceMxn,
+      scope.length > 0,
+      offsetMin,
+    );
     if (!candidate) continue;
     // Skip the DB round-trips below if it can't beat what we already have.
     if (best && candidate.discountMxn <= best.discountMxn) continue;

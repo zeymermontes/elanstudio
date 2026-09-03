@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Sparkles, CalendarCheck } from "lucide-react";
 import { getMemberDetail } from "@/lib/admin-data";
+import { getStudioUtcOffset } from "@/lib/data";
 import { formatDayLabel, formatCivilDate, formatTime, cap } from "@/lib/format";
 import { requireAdmin } from "@/lib/auth";
 import {
@@ -39,7 +40,10 @@ export default async function UsuarioDetailPage({
 }) {
   await requireAdmin();
   const { id } = await params;
-  const m = await getMemberDetail(id);
+  const [m, studioOffset] = await Promise.all([
+    getMemberDetail(id),
+    getStudioUtcOffset(),
+  ]);
   if (!m) notFound();
 
   // Server component (force-dynamic): reading current time is intentional.
@@ -121,7 +125,7 @@ export default async function UsuarioDetailPage({
           </p>
           {m.subActive && m.subEnd ? (
             <p className="mt-1 text-xs text-ink-soft">
-              Hasta {cap(formatDayLabel(m.subEnd))}
+              Hasta {cap(formatDayLabel(m.subEnd, studioOffset))}
             </p>
           ) : null}
           {m.subActive ? (
@@ -143,7 +147,8 @@ export default async function UsuarioDetailPage({
               <li key={i} className="relative">
                 <span className="absolute -left-[1.42rem] top-1.5 h-2 w-2 rounded-full bg-pink" />
                 <p className="text-xs uppercase tracking-[0.12em] text-gold">
-                  {cap(formatDayLabel(h.changed_at))} · {formatTime(h.changed_at)}
+                  {cap(formatDayLabel(h.changed_at, studioOffset))} ·{" "}
+                  {formatTime(h.changed_at, studioOffset)}
                 </p>
                 <div className="surface-card mt-1.5 rounded-xl px-5 py-3 text-sm shadow-soft">
                   {h.injuries ? (
@@ -197,7 +202,7 @@ export default async function UsuarioDetailPage({
                 <span className="text-ink">{b.className}</span>
                 <span className="text-ink-soft">
                   {b.startsAt
-                    ? `${cap(formatDayLabel(b.startsAt))} · ${formatTime(b.startsAt)}`
+                    ? `${cap(formatDayLabel(b.startsAt, b.utcOffsetMin))} · ${formatTime(b.startsAt, b.utcOffsetMin)}`
                     : ""}
                   {b.coach ? ` · ${b.coach}` : ""}
                 </span>
@@ -232,7 +237,7 @@ export default async function UsuarioDetailPage({
                 </span>
                 <span className="shrink-0 text-ink-soft">
                   {b.startsAt
-                    ? `${cap(formatDayLabel(b.startsAt))} · ${formatTime(b.startsAt)}`
+                    ? `${cap(formatDayLabel(b.startsAt, b.utcOffsetMin))} · ${formatTime(b.startsAt, b.utcOffsetMin)}`
                     : ""}
                 </span>
               </li>
@@ -265,7 +270,7 @@ export default async function UsuarioDetailPage({
                             className={`ml-2 text-xs ${expired ? "text-pink-strong" : "text-ink-soft"}`}
                           >
                             {expired ? "venció " : "vence "}
-                            {cap(formatDayLabel(l.expires_at))}
+                            {cap(formatDayLabel(l.expires_at, studioOffset))}
                           </span>
                         ) : null}
                       </td>
@@ -283,7 +288,7 @@ export default async function UsuarioDetailPage({
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right text-xs text-ink-soft">
-                        {cap(formatDayLabel(l.created_at))}
+                        {cap(formatDayLabel(l.created_at, studioOffset))}
                       </td>
                     </tr>
                   );

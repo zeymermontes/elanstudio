@@ -1,8 +1,12 @@
 /** Spanish (es-MX) formatting helpers. */
 
 /**
- * Default UTC offset (minutes) used when a slot/location has none set.
- * -360 = UTC-6, Ciudad de México.
+ * Último recurso cuando una sede no tiene huso configurado. -360 = UTC-6.
+ *
+ * NO es un default de formato: las funciones de abajo exigen el huso a
+ * propósito. Tenerlo opcional dejó que veinte llamadas lo omitieran en
+ * silencio, y como el default era Ciudad de México, cada pantalla que lo
+ * olvidaba pintaba una hora de más para un estudio en Culiacán (UTC-7).
  */
 export const DEFAULT_UTC_OFFSET_MIN = -360;
 
@@ -65,14 +69,14 @@ export function zonedToUtc(
  */
 export function toDateTimeLocal(
   iso: string | null,
-  offsetMin = DEFAULT_UTC_OFFSET_MIN,
+  offsetMin: number,
 ): string {
   if (!iso) return "";
   return atOffset(iso, offsetMin).toISOString().slice(0, 16);
 }
 
 /** Wall-clock hour (0-23) of an instant at the given offset. */
-export function zonedHour(iso: string, offsetMin = DEFAULT_UTC_OFFSET_MIN): number {
+export function zonedHour(iso: string, offsetMin: number): number {
   return atOffset(iso, offsetMin).getUTCHours();
 }
 
@@ -86,7 +90,7 @@ export function formatMxn(amount: number): string {
 
 export function formatDayLabel(
   iso: string,
-  offsetMin = DEFAULT_UTC_OFFSET_MIN,
+  offsetMin: number,
 ): string {
   return new Intl.DateTimeFormat("es-MX", {
     weekday: "long",
@@ -116,7 +120,7 @@ export function formatCivilDate(value: string): string {
 
 export function formatTime(
   iso: string,
-  offsetMin = DEFAULT_UTC_OFFSET_MIN,
+  offsetMin: number,
 ): string {
   return new Intl.DateTimeFormat("es-MX", {
     hour: "numeric",
@@ -132,7 +136,7 @@ export function cap(s: string): string {
 }
 
 /** Calendar-day key (YYYY-MM-DD) at the given offset — groups by the day shown. */
-export function dayKey(iso: string, offsetMin = DEFAULT_UTC_OFFSET_MIN): string {
+export function dayKey(iso: string, offsetMin: number): string {
   const d = atOffset(iso, offsetMin);
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");
@@ -145,7 +149,7 @@ export function dayKey(iso: string, offsetMin = DEFAULT_UTC_OFFSET_MIN): string 
  */
 export function dateBadge(
   iso: string,
-  offsetMin = DEFAULT_UTC_OFFSET_MIN,
+  offsetMin: number,
 ): { day: string; month: string } {
   const d = atOffset(iso, offsetMin);
   const month = new Intl.DateTimeFormat("es-MX", {
@@ -160,7 +164,7 @@ export function dateBadge(
 /** Short tab label like "Lun 8". */
 export function formatTabDay(
   iso: string,
-  offsetMin = DEFAULT_UTC_OFFSET_MIN,
+  offsetMin: number,
 ): string {
   const d = atOffset(iso, offsetMin);
   const wd = new Intl.DateTimeFormat("es-MX", { weekday: "short", timeZone: "UTC" })

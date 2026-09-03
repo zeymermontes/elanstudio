@@ -1,4 +1,4 @@
-import { getAllPackages } from "@/lib/data";
+import { getAllPackages, getStudioUtcOffset } from "@/lib/data";
 import { listPromotions } from "@/lib/admin-data";
 import { PromotionForm } from "@/components/admin/promotion-form";
 import { requireAdmin } from "@/lib/auth";
@@ -7,9 +7,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPromocionesPage() {
   await requireAdmin();
-  const [promotions, packages] = await Promise.all([
+  const [promotions, packages, studioOffset] = await Promise.all([
     listPromotions(),
     getAllPackages(),
+    getStudioUtcOffset(),
   ]);
 
   // Discounts only apply to one-time packages, so the monthly plan is not
@@ -29,7 +30,7 @@ export default async function AdminPromocionesPage() {
         <h2 className="mb-3 text-[0.7rem] uppercase tracking-luxe text-gold">
           Nueva promoción
         </h2>
-        <PromotionForm packages={oneTime} />
+        <PromotionForm packages={oneTime} utcOffsetMin={studioOffset} />
       </section>
 
       <section>
@@ -43,7 +44,12 @@ export default async function AdminPromocionesPage() {
         ) : (
           <div className="space-y-5">
             {promotions.map((p) => (
-              <PromotionForm key={p.id} promo={p} packages={oneTime} />
+              <PromotionForm
+                key={p.id}
+                promo={p}
+                packages={oneTime}
+                utcOffsetMin={studioOffset}
+              />
             ))}
           </div>
         )}
