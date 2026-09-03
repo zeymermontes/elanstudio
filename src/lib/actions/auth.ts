@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -126,6 +127,42 @@ async function isAlreadyConfirmed(email: string): Promise<boolean> {
     return false;
   }
   return false;
+}
+
+/**
+ * Consume el token de un correo de autenticación (alta, magic link, cambio de
+ * correo o recuperación) y deja la sesión iniciada.
+ *
+ * Vive en una acción, no en la carga de la página, a propósito: el token es de
+ * un solo uso y los escáneres de seguridad del correo — Outlook entre ellos —
+ * abren los enlaces automáticamente al entregar el mensaje. Si verificáramos al
+ * abrir, el escáner gastaría el token y la persona encontraría el enlace ya
+ * usado sin haberlo tocado. Un robot no aprieta un botón; ella sí.
+ */
+export async function confirmEmailAction(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  if (!isSupabaseConfigured()) return { error: NOT_CONFIGURED };
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { error: NOT_CONFIGURED };
+
+  const token_hash = String(formData.get("token_hash") ?? "");
+  const type = String(formData.get("type") ?? "") as EmailOtpType;
+  const next = String(formData.get("next") ?? "") || "/cuenta";
+  if (!token_hash || !type)
+    return { error: "El enlace está incompleto. Solicita uno nuevo." };
+
+  const { error } = await supabase.auth.verifyOtp({ type, token_hash });
+  if (error) {
+    console.error("[confirmEmail]", type, error.status, error.code, error.message);
+    return {
+      error:
+        "Este enlace ya no es válido: pudo expirar o ya haberse usado. Pide uno nuevo e inténtalo otra vez.",
+    };
+  }
+
+  redirect(next);
 }
 
 export async function signUpAction(
