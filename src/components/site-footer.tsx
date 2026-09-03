@@ -6,6 +6,7 @@ import {
   whatsappUrl,
   type SiteSettings,
 } from "@/lib/site";
+import { BUILD_VERSION } from "@/lib/version";
 
 export function SiteFooter({
   settings = defaultSettings,
@@ -90,7 +91,12 @@ export function SiteFooter({
       <div className="border-t border-line/70">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-5 py-5 text-xs text-ink-soft sm:flex-row">
           <p>© {new Date().getFullYear()} {s.studioName}. Todos los derechos reservados.</p>
-          <p className="uppercase tracking-luxe">{s.tagline}</p>
+          <p className="uppercase tracking-luxe">
+            {s.tagline}{" "}
+            <span className="ml-2 normal-case tracking-normal text-ink-soft/50">
+              v{BUILD_VERSION}
+            </span>
+          </p>
         </div>
       </div>
     </footer>
