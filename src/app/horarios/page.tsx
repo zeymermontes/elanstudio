@@ -6,7 +6,15 @@ import { getSchedule, getSpecialEvents } from "@/lib/data";
 import { formatDayLabel, formatTabDay, dayKey, zonedHour, cap } from "@/lib/format";
 import { ScheduleSlotItem } from "@/components/schedule-slot-item";
 import { encodeRef } from "@/lib/schedule-ref";
+import { slotBlockedLabel } from "@/lib/booking-rules";
 import type { ScheduleSlot } from "@/lib/types";
+
+/**
+ * Why a slot can't be booked, or null. Threaded down from the page instead of
+ * computed per card because the booking window depends on the current time,
+ * and every card on a render has to read the same clock.
+ */
+type BlockedFor = (slot: ScheduleSlot) => string | null;
 
 export const metadata: Metadata = { title: "Horarios" };
 export const dynamic = "force-dynamic";
@@ -15,10 +23,12 @@ function PartOfDay({
   title,
   icon: Icon,
   slots,
+  blockedFor,
 }: {
   title: string;
   icon: typeof Sun;
   slots: ScheduleSlot[];
+  blockedFor: BlockedFor;
 }) {
   if (slots.length === 0) return null;
   return (
@@ -28,7 +38,12 @@ function PartOfDay({
       </h3>
       <div className="space-y-3">
         {slots.map((s) => (
-          <ScheduleSlotItem key={encodeRef(s.ref)} slot={s} refStr={encodeRef(s.ref)} />
+          <ScheduleSlotItem
+            key={encodeRef(s.ref)}
+            slot={s}
+            refStr={encodeRef(s.ref)}
+            blocked={blockedFor(s)}
+          />
         ))}
       </div>
     </section>
@@ -48,7 +63,7 @@ function groupByDay(slots: ScheduleSlot[]): [string, ScheduleSlot[]][] {
 }
 
 /** Build one tab per calendar day (with a morning/afternoon split) for a set of slots. */
-function buildDayTabs(slots: ScheduleSlot[]) {
+function buildDayTabs(slots: ScheduleSlot[], blockedFor: BlockedFor) {
   return groupByDay(slots).map(([date, daySlots]) => {
     const morning = daySlots.filter(
       (s) => zonedHour(s.startsAt, s.utcOffsetMin) < 12,
@@ -65,8 +80,18 @@ function buildDayTabs(slots: ScheduleSlot[]) {
             {cap(formatDayLabel(daySlots[0].startsAt, daySlots[0].utcOffsetMin))}
           </h2>
           <div className="space-y-9">
-            <PartOfDay title="Mañana" icon={Sun} slots={morning} />
-            <PartOfDay title="Tarde" icon={Sunset} slots={afternoon} />
+            <PartOfDay
+              title="Mañana"
+              icon={Sun}
+              slots={morning}
+              blockedFor={blockedFor}
+            />
+            <PartOfDay
+              title="Tarde"
+              icon={Sunset}
+              slots={afternoon}
+              blockedFor={blockedFor}
+            />
           </div>
         </div>
       ),
@@ -82,6 +107,11 @@ export default async function HorariosPage() {
     getSchedule(WEEK_DAYS),
     getSpecialEvents(),
   ]);
+
+  // Server component (force-dynamic): reading the current time is intentional.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
+  const blockedFor: BlockedFor = (s) => slotBlockedLabel(s, nowMs);
 
   // Events inside the week already have their own day tab; the rest would be
   // invisible without a section of their own, which is the point of listing
@@ -109,7 +139,7 @@ export default async function HorariosPage() {
     a[1].name.localeCompare(b[1].name, "es"),
   );
 
-  const dayTabs = buildDayTabs(slots);
+  const dayTabs = buildDayTabs(slots, blockedFor);
   const showLocationFilter = locations.length > 1;
 
   // With more than one branch, wrap the day tabs in an outer "location" tab bar.
@@ -119,7 +149,7 @@ export default async function HorariosPage() {
         ...locations.map(([id, group]) => ({
           key: id,
           label: group.name,
-          content: <Tabs tabs={buildDayTabs(group.slots)} />,
+          content: <Tabs tabs={buildDayTabs(group.slots, blockedFor)} />,
         })),
       ]
     : [];
@@ -176,6 +206,7 @@ export default async function HorariosPage() {
                         key={encodeRef(e.ref)}
                         slot={e}
                         refStr={encodeRef(e.ref)}
+                        blocked={blockedFor(e)}
                       />
                     ))}
                   </div>

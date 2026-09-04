@@ -6,18 +6,25 @@ import { Clock, User, X, Signal, ArrowRight } from "lucide-react";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
 import { ReserveButton } from "@/components/reserve-button";
 import { LocationChip } from "@/components/location-chip";
+import { BOOKING_WINDOW_NOTE } from "@/lib/booking-rules";
 import type { ScheduleSlot } from "@/lib/types";
 
 /**
  * A schedule slot in /horarios. The whole card is clickable and opens a detail
  * modal (class description, coach, time, spots) with Reservar / Cerrar.
+ *
+ * `blocked` is why the slot can't be booked (full, or outside the booking
+ * window) or null when it can. It comes from the server: the window depends on
+ * the current time, and reading the clock here would mismatch on hydration.
  */
 export function ScheduleSlotItem({
   slot,
   refStr,
+  blocked,
 }: {
   slot: ScheduleSlot;
   refStr: string;
+  blocked: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const full = slot.spotsLeft === 0;
@@ -71,12 +78,22 @@ export function ScheduleSlotItem({
             {full ? "Sin lugares" : `${slot.spotsLeft} lugares`}
           </span>
           {/* Direct reserve shortcut (skips the modal) */}
-          <ReserveButton refStr={refStr} disabled={full} />
+          <ReserveButton
+            refStr={refStr}
+            blocked={blocked}
+            title={full ? undefined : BOOKING_WINDOW_NOTE}
+          />
         </div>
       </article>
 
       {open ? (
-        <Modal slot={slot} refStr={refStr} full={full} onClose={() => setOpen(false)} />
+        <Modal
+          slot={slot}
+          refStr={refStr}
+          full={full}
+          blocked={blocked}
+          onClose={() => setOpen(false)}
+        />
       ) : null}
     </>
   );
@@ -86,11 +103,13 @@ function Modal({
   slot,
   refStr,
   full,
+  blocked,
   onClose,
 }: {
   slot: ScheduleSlot;
   refStr: string;
   full: boolean;
+  blocked: string | null;
   onClose: () => void;
 }) {
   const c = slot.coach;
@@ -181,6 +200,11 @@ function Modal({
         >
           {full ? "Esta clase está llena." : `${slot.spotsLeft} lugares disponibles`}
         </p>
+        {blocked && !full ? (
+          <p className="mt-1.5 text-xs leading-relaxed text-ink-soft">
+            {BOOKING_WINDOW_NOTE}
+          </p>
+        ) : null}
 
         <div className="mt-5 flex items-center justify-end gap-3">
           <button
@@ -190,9 +214,9 @@ function Modal({
           >
             Cerrar
           </button>
-          {full ? (
+          {blocked ? (
             <span className="cursor-not-allowed rounded-full border border-line px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-ink-soft/60">
-              Lleno
+              {blocked}
             </span>
           ) : (
             <Link

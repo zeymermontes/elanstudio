@@ -7,10 +7,22 @@ import {
 } from "@/lib/admin-data";
 import { CheckInRow } from "@/components/admin/check-in";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
+import { bookingWindow, EMPTY_CLASS_CUTOFF_HOURS } from "@/lib/booking-rules";
+
+/** Shown on a class with nobody in it — the whole point of the early cutoff. */
+const NO_ONE_COMING = `Nadie reservó y las reservas cerraron ${EMPTY_CLASS_CUTOFF_HOURS} horas antes: esta clase no se abre, no necesitas venir.`;
 
 export const dynamic = "force-dynamic";
 
-function ClassCard({ s, allowCheckIn }: { s: ReservationSession; allowCheckIn: boolean }) {
+function ClassCard({
+  s,
+  allowCheckIn,
+  emptyText,
+}: {
+  s: ReservationSession;
+  allowCheckIn: boolean;
+  emptyText: string;
+}) {
   return (
     <article className="surface-card overflow-hidden rounded-2xl shadow-soft">
       <div className="flex items-start justify-between gap-4 border-b border-line/70 px-6 py-4">
@@ -28,7 +40,7 @@ function ClassCard({ s, allowCheckIn }: { s: ReservationSession; allowCheckIn: b
       </div>
 
       {s.members.length === 0 ? (
-        <p className="px-6 py-4 text-sm text-ink-soft">Sin reservas aún.</p>
+        <p className="px-6 py-4 text-sm text-ink-soft">{emptyText}</p>
       ) : allowCheckIn ? (
         <div className="space-y-2 p-3">
           {s.members.map((m) => (
@@ -113,7 +125,16 @@ export default async function MisClasesPage() {
         ) : (
           <div className="space-y-4">
             {upcoming.map((s) => (
-              <ClassCard key={s.sessionId} s={s} allowCheckIn={true} />
+              <ClassCard
+                key={s.sessionId}
+                s={s}
+                allowCheckIn={true}
+                emptyText={
+                  bookingWindow(s.startsAt, 0, nowMs) === "open"
+                    ? "Sin reservas aún."
+                    : NO_ONE_COMING
+                }
+              />
             ))}
           </div>
         )}
@@ -128,7 +149,12 @@ export default async function MisClasesPage() {
         ) : (
           <div className="space-y-4">
             {past.map((s) => (
-              <ClassCard key={s.sessionId} s={s} allowCheckIn={true} />
+              <ClassCard
+                key={s.sessionId}
+                s={s}
+                allowCheckIn={true}
+                emptyText="Nadie reservó esta clase."
+              />
             ))}
           </div>
         )}

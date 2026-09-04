@@ -7,13 +7,22 @@ import { bookingMessage } from "@/lib/booking-messages";
 import { CANCEL_WINDOW_NOTE } from "@/lib/booking-rules";
 import { cancelSubscriptionAction } from "@/lib/actions/subscription";
 
-/** Confirmation card shown when arriving at /cuenta?reservar=<ref>. */
+/**
+ * Confirmation card shown when arriving at /cuenta?reservar=<ref>.
+ *
+ * `blocked` is a booking-result code ('started' / 'empty_closed') when the
+ * class already closed while the member was on their way here — the server
+ * computes it so the card explains it instead of offering a button that
+ * book_session would only refuse.
+ */
 export function ConfirmReserve({
   refStr,
   label,
+  blocked,
 }: {
   refStr: string;
   label: string;
+  blocked?: string | null;
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -29,7 +38,9 @@ export function ConfirmReserve({
 
   return (
     <div className="surface-card mb-8 rounded-2xl border-l-2 border-pink px-6 py-5 shadow-soft">
-      {msg ? (
+      {blocked && !msg ? (
+        <p className="text-sm text-pink-strong">{bookingMessage(blocked)}</p>
+      ) : msg ? (
         <p
           className={`text-sm ${msg.ok ? "text-gold" : "text-pink-strong"}`}
         >

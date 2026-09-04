@@ -3,6 +3,7 @@ import { ArrowRight, Clock, User } from "lucide-react";
 import { cap, dateBadge, formatDayLabel, formatTime } from "@/lib/format";
 import { encodeRef } from "@/lib/schedule-ref";
 import { LocationChip } from "@/components/location-chip";
+import { slotBlockedLabel } from "@/lib/booking-rules";
 import type { ScheduleSlot } from "@/lib/types";
 
 /**
@@ -12,6 +13,11 @@ import type { ScheduleSlot } from "@/lib/types";
  */
 export function SpecialEvents({ events }: { events: ScheduleSlot[] }) {
   if (events.length === 0) return null;
+
+  // Server component (the landing page is dynamic): reading the clock is
+  // intentional, and every card has to read the same one.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
 
   return (
     <section className="mx-auto max-w-6xl px-5 pb-4">
@@ -26,14 +32,24 @@ export function SpecialEvents({ events }: { events: ScheduleSlot[] }) {
 
       <div className="grid gap-6 md:grid-cols-2">
         {events.map((e) => (
-          <EventCard key={encodeRef(e.ref)} event={e} />
+          <EventCard
+            key={encodeRef(e.ref)}
+            event={e}
+            blocked={slotBlockedLabel(e, nowMs)}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function EventCard({ event: e }: { event: ScheduleSlot }) {
+function EventCard({
+  event: e,
+  blocked,
+}: {
+  event: ScheduleSlot;
+  blocked: string | null;
+}) {
   const { day, month } = dateBadge(e.startsAt, e.utcOffsetMin);
   const full = e.spotsLeft === 0;
 
@@ -73,9 +89,9 @@ function EventCard({ event: e }: { event: ScheduleSlot }) {
       </div>
 
       <div className="shrink-0">
-        {full ? (
+        {blocked ? (
           <span className="inline-block cursor-not-allowed rounded-full border border-line px-5 py-2 text-[0.75rem] uppercase tracking-[0.15em] text-ink-soft/60">
-            Lleno
+            {blocked}
           </span>
         ) : (
           <Link

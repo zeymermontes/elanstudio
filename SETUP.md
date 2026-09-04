@@ -20,11 +20,11 @@ The site **runs with no backend** — pages render from seed data in
 ## Enable the backend (Supabase)
 
 1. Create a project at https://supabase.com.
-2. In the **SQL editor**, run the migrations in order:
-   - `supabase/migrations/0001_init.sql` — tables, RLS, booking RPCs, and seed
-     content (services, classes, coaches, locations, packages, a week of sessions).
-   - `supabase/migrations/0002_subscriptions.sql` — the monthly subscription
-     support (subscriptions table, `recurring` flag, subscription-aware booking).
+2. In the **SQL editor**, run every file in `supabase/migrations/` in numeric
+   order, from `0001_init.sql` onwards. Each one says at the top what it changes
+   and which migration it applies after; later files redefine functions from
+   earlier ones, so the order matters. On an existing project, run only the ones
+   newer than the last you applied.
 3. Copy `.env.example` → `.env.local` and fill in:
    - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Settings → API)
    - `SUPABASE_SERVICE_ROLE_KEY` (Settings → API — server-only secret)

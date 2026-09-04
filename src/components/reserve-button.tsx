@@ -3,19 +3,28 @@ import Link from "next/link";
 /**
  * Reserve CTA shown on each schedule slot. Carries an encoded booking ref
  * (session or virtual template+date) into the booking flow at `/cuenta`, which
- * requires auth. Renders a disabled pill when the slot is full.
+ * requires auth.
+ *
+ * `blocked` is the reason the slot can't be booked ("Lleno", "Reservas
+ * cerradas", "Ya comenzó") or null when it can — computed on the server by
+ * `slotBlockedLabel`, since the booking window depends on the current time.
  */
 export function ReserveButton({
   refStr,
-  disabled,
+  blocked,
+  title,
 }: {
   refStr: string;
-  disabled?: boolean;
+  blocked?: string | null;
+  title?: string;
 }) {
-  if (disabled) {
+  if (blocked) {
     return (
-      <span className="cursor-not-allowed rounded-full border border-line px-5 py-2 text-[0.75rem] uppercase tracking-[0.15em] text-ink-soft/60">
-        Lleno
+      <span
+        title={title}
+        className="cursor-not-allowed rounded-full border border-line px-5 py-2 text-center text-[0.75rem] uppercase tracking-[0.15em] text-ink-soft/60"
+      >
+        {blocked}
       </span>
     );
   }

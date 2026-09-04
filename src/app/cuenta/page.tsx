@@ -10,7 +10,11 @@ import {
   CancelBooking,
   CancelSubscription,
 } from "@/components/account-actions";
-import { canCancelBooking, CANCEL_WINDOW_NOTE } from "@/lib/booking-rules";
+import {
+  canCancelBooking,
+  CANCEL_WINDOW_NOTE,
+  bookingWindow,
+} from "@/lib/booking-rules";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { decodeRef } from "@/lib/schedule-ref";
 import {
@@ -116,8 +120,21 @@ export default async function CuentaPage({
       (a.class_sessions!.starts_at).localeCompare(b.class_sessions!.starts_at),
     );
 
-  // Label for the reservation confirmation card.
+  /** Confirmed bookings on a session, for the booking window. */
+  async function bookedCount(sessionId: string): Promise<number> {
+    const { count } = await supabase!
+      .from("bookings")
+      .select("user_id", { count: "exact", head: true })
+      .eq("session_id", sessionId)
+      .eq("status", "confirmed");
+    return count ?? 0;
+  }
+
+  // Label for the reservation confirmation card, plus the reason the class
+  // can't be booked any more ('started' / 'empty_closed') when the member gets
+  // here too late — book_session would refuse it, so say so before the click.
   let reservarLabel: string | null = null;
+  let reservarBlocked: string | null = null;
   const reserveRef = reservar ? decodeRef(reservar) : null;
   if (reserveRef?.kind === "session") {
     const { data: sess } = await supabase
@@ -138,6 +155,12 @@ export default async function CuentaPage({
       reservarLabel = `${ct?.name ?? "Clase"} · ${cap(
         formatDayLabel(raw.starts_at, off),
       )} ${formatTime(raw.starts_at, off)}`;
+      const win = bookingWindow(
+        raw.starts_at,
+        await bookedCount(reserveRef.sessionId),
+        nowMs,
+      );
+      if (win !== "open") reservarBlocked = win;
     }
   } else if (reserveRef?.kind === "weekly") {
     const { data: wc } = await supabase
@@ -167,6 +190,21 @@ export default async function CuentaPage({
       reservarLabel = `${ct?.name ?? "Clase"} · ${cap(
         formatDayLabel(startsAt, off),
       )} ${formatTime(startsAt, off)}`;
+
+      // A recurring slot only has a session row once someone books it, so no
+      // row means nobody has — which is exactly what closes it 2 h ahead.
+      const { data: mat } = await supabase
+        .from("class_sessions")
+        .select("id")
+        .eq("weekly_class_id", reserveRef.weeklyId)
+        .eq("session_date", reserveRef.date)
+        .maybeSingle();
+      const win = bookingWindow(
+        startsAt,
+        mat ? await bookedCount(mat.id) : 0,
+        nowMs,
+      );
+      if (win !== "open") reservarBlocked = win;
     }
   }
 
@@ -208,7 +246,11 @@ export default async function CuentaPage({
       ) : null}
 
       {reservar && reservarLabel ? (
-        <ConfirmReserve refStr={reservar} label={reservarLabel} />
+        <ConfirmReserve
+          refStr={reservar}
+          label={reservarLabel}
+          blocked={reservarBlocked}
+        />
       ) : null}
 
       {/* Credits */}
