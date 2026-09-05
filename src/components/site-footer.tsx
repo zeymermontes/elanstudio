@@ -90,7 +90,19 @@ export function SiteFooter({
 
       <div className="border-t border-line/70">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-5 py-5 text-xs text-ink-soft sm:flex-row">
-          <p>© {new Date().getFullYear()} {s.studioName}. Todos los derechos reservados.</p>
+          <p>
+            © {new Date().getFullYear()} {s.studioName}. Todos los derechos reservados.
+            <span className="mx-2 text-ink-soft/40">·</span>
+            Powered by{" "}
+            <a
+              href="https://hiratalabs.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:text-pink-strong"
+            >
+              hiratalabs
+            </a>
+          </p>
           <p className="uppercase tracking-luxe">
             {s.tagline}{" "}
             <span className="ml-2 normal-case tracking-normal text-ink-soft/50">

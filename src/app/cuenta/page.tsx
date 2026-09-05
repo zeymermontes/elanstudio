@@ -120,14 +120,17 @@ export default async function CuentaPage({
       (a.class_sessions!.starts_at).localeCompare(b.class_sessions!.starts_at),
     );
 
-  /** Confirmed bookings on a session, for the booking window. */
+  /**
+   * Confirmed bookings on a session, for the booking window. Via the
+   * session_booked_counts RPC (0020): RLS only shows a member her own booking,
+   * so counting `bookings` directly always said 0 or 1.
+   */
   async function bookedCount(sessionId: string): Promise<number> {
-    const { count } = await supabase!
-      .from("bookings")
-      .select("user_id", { count: "exact", head: true })
-      .eq("session_id", sessionId)
-      .eq("status", "confirmed");
-    return count ?? 0;
+    const { data } = await supabase!.rpc("session_booked_counts", {
+      p_sessions: [sessionId],
+    });
+    const row = (data ?? [])[0] as { booked: number } | undefined;
+    return row?.booked ?? 0;
   }
 
   // Label for the reservation confirmation card, plus the reason the class

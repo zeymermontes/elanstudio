@@ -200,17 +200,10 @@ export async function getUpcomingSessions(
   if (!sessions) return [];
 
   // Confirmed booking counts per session.
-  const ids = sessions.map((s) => s.id);
-  const counts = new Map<string, number>();
-  if (ids.length) {
-    const { data: bookings } = await supabase
-      .from("bookings")
-      .select("session_id")
-      .eq("status", "confirmed")
-      .in("session_id", ids);
-    for (const b of bookings ?? [])
-      counts.set(b.session_id, (counts.get(b.session_id) ?? 0) + 1);
-  }
+  const counts = await getBookedCounts(
+    supabase,
+    sessions.map((s) => s.id),
+  );
 
   return sessions
     .map((s) =>
@@ -232,6 +225,28 @@ export async function getUpcomingSessions(
       ),
     )
     .filter((s): s is SessionView => s !== null);
+}
+
+/**
+ * Confirmed bookings per session, as {sessionId → count}.
+ *
+ * Goes through the session_booked_counts RPC (0020) rather than reading
+ * `bookings` directly: RLS only shows a member her own row, so a plain count
+ * gave every visitor the full capacity no matter how many had booked.
+ */
+async function getBookedCounts(
+  supabase: NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>,
+  ids: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (!ids.length) return counts;
+  const { data, error } = await supabase.rpc("session_booked_counts", {
+    p_sessions: ids,
+  });
+  if (error) console.error("[session_booked_counts]", error.code, error.message);
+  for (const r of (data ?? []) as { session_id: string; booked: number }[])
+    counts.set(r.session_id, r.booked);
+  return counts;
 }
 
 function isoDate(d: Date): string {
@@ -344,17 +359,10 @@ export async function getSpecialEvents({
     locById: new Map(locations.map((l) => [l.id, l])),
   };
 
-  const counts = new Map<string, number>();
-  const { data: bk } = await supabase
-    .from("bookings")
-    .select("session_id")
-    .eq("status", "confirmed")
-    .in(
-      "session_id",
-      rows.map((r) => r.id),
-    );
-  for (const b of bk ?? [])
-    counts.set(b.session_id, (counts.get(b.session_id) ?? 0) + 1);
+  const counts = await getBookedCounts(
+    supabase,
+    rows.map((r) => r.id),
+  );
 
   return rows
     .map((r) => toEventSlot(r, maps, counts.get(r.id) ?? 0))
@@ -417,17 +425,10 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
   const sessions = sessionsRaw ?? [];
 
   // Booked counts.
-  const counts = new Map<string, number>();
-  const ids = sessions.map((s) => s.id);
-  if (ids.length) {
-    const { data: bk } = await supabase
-      .from("bookings")
-      .select("session_id")
-      .eq("status", "confirmed")
-      .in("session_id", ids);
-    for (const b of bk ?? [])
-      counts.set(b.session_id, (counts.get(b.session_id) ?? 0) + 1);
-  }
+  const counts = await getBookedCounts(
+    supabase,
+    sessions.map((s) => s.id),
+  );
 
   const materialized = new Map<string, (typeof sessions)[number]>();
   const oneOffs: typeof sessions = [];
