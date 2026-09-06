@@ -26,10 +26,10 @@ export default async function CoachesPage() {
               <img
                 src={coach.photoUrl}
                 alt={coach.name}
-                className="h-64 w-full object-cover"
+                className="aspect-[4/5] w-full object-cover object-top md:aspect-auto md:h-64"
               />
             ) : (
-              <div className="flex h-64 items-center justify-center bg-gradient-to-br from-pink-soft to-cream">
+              <div className="flex aspect-[4/5] items-center justify-center bg-gradient-to-br from-pink-soft to-cream md:aspect-auto md:h-64">
                 <span className="font-serif text-5xl italic text-pink-strong/50">
                   {coach.name
                     .split(" ")
