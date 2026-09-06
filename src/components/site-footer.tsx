@@ -111,12 +111,12 @@ export function SiteFooter({
             </span>
           </p>
           <p className="order-first uppercase tracking-luxe sm:order-none">
-            {s.tagline}{" "}
-            <span className="ml-2 normal-case tracking-normal text-ink-soft/50">
-              v{APP_VERSION}
-            </span>
+            {s.tagline}
           </p>
         </div>
+        <p className="mx-auto max-w-6xl px-5 pb-4 text-center text-[0.65rem] text-ink-soft/50 sm:text-right">
+          v{APP_VERSION}
+        </p>
       </div>
     </footer>
   );
