@@ -50,6 +50,16 @@ The site **runs with no backend** — pages render from seed data in
    subscribed to **payment** and **subscription** events. (Subscriptions can't
    reach `localhost`; use a tunnel like ngrok to test locally.)
 
+## Bank transfers (optional)
+
+Migration `0021_bank_transfer.sql` adds a private `receipts` Storage bucket and
+the settings. Turn it on in **Admin → Marca & Ajustes → Pago por transferencia**
+and paste the account details (bank, holder, CLABE…). Members then get a
+"Transferencia" tab at checkout: they transfer, upload the receipt, and their
+classes are credited on the spot. Each transfer shows up in **Admin → Pagos**
+with a counter in the menu; rejecting one takes the classes back, and either
+decision can be corrected later from the same screen.
+
 ## Deploy (Render)
 
 Deploy as a **Web Service** (Node), not a static site — the app has API routes

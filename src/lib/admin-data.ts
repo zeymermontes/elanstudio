@@ -641,3 +641,23 @@ export async function listPromotions(): Promise<PromotionWithScope[]> {
     redemptions: used.get(p.id) ?? 0,
   }));
 }
+
+// ---------------------------------------------------------------------------
+// Transferencias
+// ---------------------------------------------------------------------------
+
+/**
+ * Transferencias que el admin aún no ha revisado. Alimenta el contador del
+ * menú, así que corre en cada carga del panel: una sola consulta de conteo
+ * sobre el índice parcial de 0021.
+ */
+export async function countTransfersToReview(): Promise<number> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return 0;
+  const { count } = await admin
+    .from("purchases")
+    .select("id", { count: "exact", head: true })
+    .eq("method", "transfer")
+    .is("reviewed_at", null);
+  return count ?? 0;
+}

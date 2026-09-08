@@ -46,7 +46,16 @@ const items: Item[] = [
   { href: "/admin/pagos", label: "Pagos", icon: CreditCard, roles: ADMIN },
 ];
 
-export function AdminNav({ role }: { role: Role }) {
+/** Pending counts per href, e.g. transfers waiting for review on /admin/pagos. */
+export type NavBadges = Partial<Record<string, number>>;
+
+export function AdminNav({
+  role,
+  badges = {},
+}: {
+  role: Role;
+  badges?: NavBadges;
+}) {
   const pathname = usePathname();
   const visible = items.filter((it) => it.roles.includes(role));
 
@@ -68,6 +77,14 @@ export function AdminNav({ role }: { role: Role }) {
           >
             <it.icon size={17} strokeWidth={1.5} />
             {it.label}
+            {badges[it.href] ? (
+              <span
+                className="ml-auto inline-flex min-w-[1.4rem] items-center justify-center rounded-full bg-pink-strong px-1.5 py-0.5 text-[0.65rem] font-medium leading-none text-white"
+                aria-label={`${badges[it.href]} por revisar`}
+              >
+                {badges[it.href]}
+              </span>
+            ) : null}
           </Link>
         );
       })}

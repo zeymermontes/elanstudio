@@ -3,12 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { AdminNav } from "./admin-nav";
+import { AdminNav, type NavBadges } from "./admin-nav";
 import { signOutAction } from "@/lib/actions/auth";
 import type { Role } from "@/lib/auth";
 
 /** Mobile-only top bar + slide-in drawer for the admin navigation. */
-export function AdminMobileNav({ name, role }: { name: string; role: Role }) {
+export function AdminMobileNav({
+  name,
+  role,
+  badges,
+}: {
+  name: string;
+  role: Role;
+  badges?: NavBadges;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -27,9 +35,12 @@ export function AdminMobileNav({ name, role }: { name: string; role: Role }) {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Menú"
-          className="text-ink"
+          className="relative text-ink"
         >
           <Menu size={24} strokeWidth={1.5} />
+          {Object.values(badges ?? {}).some((n) => n) ? (
+            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-pink-strong" />
+          ) : null}
         </button>
       </div>
 
@@ -57,7 +68,7 @@ export function AdminMobileNav({ name, role }: { name: string; role: Role }) {
 
             {/* Close the drawer when any link inside is tapped. */}
             <div onClick={() => setOpen(false)}>
-              <AdminNav role={role} />
+              <AdminNav role={role} badges={badges} />
             </div>
 
             <div className="mt-6 border-t border-line pt-4">

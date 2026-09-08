@@ -65,6 +65,37 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
         </div>
       </div>
 
+      <div className="surface-card rounded-2xl px-7 py-7 shadow-soft">
+        <h2 className="mb-1 font-serif text-2xl text-ink">Pago por transferencia</h2>
+        <p className="mb-5 text-xs text-ink-soft">
+          Además de la tarjeta, la alumna puede transferir y subir su comprobante.
+          Sus clases se acreditan al momento y tú revisas la transferencia en
+          Pagos.
+        </p>
+        <label className="mb-5 flex items-center gap-3 text-sm text-ink">
+          <input
+            type="checkbox"
+            name="transfer_enabled"
+            defaultChecked={settings.transferEnabled}
+            className="h-4 w-4 accent-pink-strong"
+          />
+          Ofrecer pago por transferencia
+        </label>
+        <Field label="Datos para transferir">
+          <textarea
+            name="transfer_accounts"
+            rows={6}
+            defaultValue={settings.transferAccounts}
+            placeholder={"BBVA\nTitular: Élan Studio S.A. de C.V.\nCLABE: 012 345 678 901 234 567\n\nConcepto: tu nombre"}
+            className={inputClass}
+          />
+        </Field>
+        <p className="mt-2 text-xs text-ink-soft">
+          Se muestra tal cual, con saltos de línea. Puedes poner una o varias
+          cuentas.
+        </p>
+      </div>
+
       <SaveButton label="Guardar cambios" />
     </form>
   );

@@ -47,6 +47,8 @@ export async function getSettings(): Promise<SiteSettings> {
     email: data.email ?? "",
     instagram: data.instagram ?? "",
     address: data.address ?? "",
+    transferEnabled: Boolean(data.transfer_enabled),
+    transferAccounts: data.transfer_accounts ?? "",
   };
 }
 

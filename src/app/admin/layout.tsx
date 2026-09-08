@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireStaff } from "@/lib/auth";
+import { countTransfersToReview } from "@/lib/admin-data";
 import { signOutAction } from "@/lib/actions/auth";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
@@ -12,11 +13,19 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireStaff();
+  // Only admins see Pagos, so only they get the count.
+  const toReview =
+    profile.role === "admin" ? await countTransfersToReview() : 0;
+  const badges = toReview ? { "/admin/pagos": toReview } : {};
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-10 lg:flex-row">
       {/* Mobile: top bar + slide-in drawer */}
-      <AdminMobileNav name={profile.full_name} role={profile.role} />
+      <AdminMobileNav
+        name={profile.full_name}
+        role={profile.role}
+        badges={badges}
+      />
 
       {/* Desktop: sticky sidebar */}
       <aside className="hidden lg:block lg:w-60 lg:shrink-0">
@@ -31,7 +40,7 @@ export default async function AdminLayout({
           </Link>
 
           <div className="my-6">
-            <AdminNav role={profile.role} />
+            <AdminNav role={profile.role} badges={badges} />
           </div>
 
           <div className="mt-6 border-t border-line pt-4">

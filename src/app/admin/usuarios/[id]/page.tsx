@@ -31,6 +31,7 @@ const REASONS: Record<string, string> = {
   refund: "Reembolso",
   manual: "Ajuste manual",
   subscription: "Suscripción",
+  transfer_rejected: "Transferencia rechazada",
 };
 
 export default async function UsuarioDetailPage({

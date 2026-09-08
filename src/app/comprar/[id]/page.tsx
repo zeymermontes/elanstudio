@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
-import { getPackageById } from "@/lib/data";
+import { getPackageById, getSettings } from "@/lib/data";
 import { getCurrentUser } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -10,6 +10,7 @@ import { resolvePromotion } from "@/lib/promotions";
 import { resolveStock } from "@/lib/stock";
 import { formatMxn } from "@/lib/format";
 import { EmbeddedCheckout } from "@/components/embedded-checkout";
+import { PaymentMethods } from "@/components/payment-methods";
 import { SubscribeButton } from "@/components/subscribe-button";
 
 export const metadata: Metadata = { title: "Comprar" };
@@ -51,6 +52,20 @@ export default async function ComprarPage({
   const promo = admin
     ? await resolvePromotion(admin, { pkg, userId })
     : null;
+  const checkoutPromo = promo
+    ? {
+        name: promo.promotion.name,
+        discountMxn: promo.discountMxn,
+        finalMxn: promo.finalMxn,
+        terms: promo.terms,
+      }
+    : null;
+
+  // La transferencia solo aplica a compras únicas: el plan mensual lo cobra
+  // Mercado Pago cada mes y no hay comprobante que subir.
+  const settings = await getSettings();
+  const offerTransfer =
+    settings.transferEnabled && !pkg.recurring && !!settings.transferAccounts.trim();
 
   return (
     <div className="mx-auto max-w-xl px-5 py-14">
@@ -107,6 +122,18 @@ export default async function ComprarPage({
             <h2 className="mb-4 font-serif text-2xl text-ink">Suscripción</h2>
             <SubscribeButton packageId={pkg.id} />
           </div>
+        ) : offerTransfer ? (
+          <div>
+            <h2 className="mb-4 font-serif text-2xl text-ink">¿Cómo quieres pagar?</h2>
+            <PaymentMethods
+              packageId={pkg.id}
+              amount={pkg.priceMxn}
+              publicKey={publicKey}
+              payerEmail={userEmail}
+              initialPromo={checkoutPromo}
+              transferAccounts={settings.transferAccounts}
+            />
+          </div>
         ) : (
           <div>
             <h2 className="mb-4 font-serif text-2xl text-ink">Datos de pago</h2>
@@ -115,24 +142,14 @@ export default async function ComprarPage({
               amount={pkg.priceMxn}
               publicKey={publicKey}
               payerEmail={userEmail}
-              initialPromo={
-                promo
-                  ? {
-                      name: promo.promotion.name,
-                      discountMxn: promo.discountMxn,
-                      finalMxn: promo.finalMxn,
-                      terms: promo.terms,
-                    }
-                  : null
-              }
+              initialPromo={checkoutPromo}
             />
+            <p className="mt-6 text-center text-xs text-ink-soft">
+              Pago seguro procesado por Mercado Pago.
+            </p>
           </div>
         )}
       </div>
-
-      <p className="mt-6 text-center text-xs text-ink-soft">
-        Pago seguro procesado por Mercado Pago.
-      </p>
     </div>
   );
 }

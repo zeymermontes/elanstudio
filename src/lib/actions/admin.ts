@@ -64,6 +64,8 @@ export async function updateSettingsAction(
       email: str(fd, "email"),
       instagram: str(fd, "instagram"),
       address: str(fd, "address"),
+      transfer_enabled: fd.get("transfer_enabled") === "on",
+      transfer_accounts: str(fd, "transfer_accounts"),
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);

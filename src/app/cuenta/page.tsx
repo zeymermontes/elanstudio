@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Sparkles, Calendar, ShoppingBag } from "lucide-react";
+import { Sparkles, Calendar, ShoppingBag, Landmark } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { signOutAction } from "@/lib/actions/auth";
@@ -17,6 +17,8 @@ import {
 } from "@/lib/booking-rules";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { decodeRef } from "@/lib/schedule-ref";
+import { getSettings } from "@/lib/data";
+import { whatsappUrl } from "@/lib/site";
 import {
   formatDayLabel,
   formatTime,
@@ -80,7 +82,17 @@ export default async function CuentaPage({
     return <OnboardingForm firstName={fn} />;
   }
 
-  const [{ data: profile }, { data: balance }, { data: bookings }, { data: sub }] =
+  // Server component (force-dynamic): reading the current time is intentional.
+  // eslint-disable-next-line react-hooks/purity
+  const sinceMs = Date.now() - 30 * 86400000;
+
+  const [
+    { data: profile },
+    { data: balance },
+    { data: bookings },
+    { data: sub },
+    { data: rejectedTransfers },
+  ] =
     await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", user.id).single(),
       supabase.rpc("credit_balance", { p_user: user.id }),
@@ -99,6 +111,16 @@ export default async function CuentaPage({
         .order("current_period_end", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      // Transferencias que el admin no pudo confirmar: se le retiraron las
+      // clases y hay que decírselo con calma, no dejar que lo descubra sola.
+      supabase
+        .from("purchases")
+        .select("id, reviewed_at, packages(name)")
+        .eq("user_id", user.id)
+        .eq("method", "transfer")
+        .eq("status", "rejected")
+        .gte("reviewed_at", new Date(sinceMs).toISOString())
+        .order("reviewed_at", { ascending: false }),
     ]);
 
   // Server component (force-dynamic): reading the current time is intentional.
@@ -211,6 +233,9 @@ export default async function CuentaPage({
     }
   }
 
+  // Solo hace falta el WhatsApp del estudio si hay algo que contarle.
+  const studio = rejectedTransfers?.length ? await getSettings() : null;
+
   const firstName = (profile?.full_name ?? "").split(" ")[0] || "Bienvenida";
   const credits = (balance as number | null) ?? 0;
 
@@ -241,6 +266,15 @@ export default async function CuentaPage({
       <div className="gold-rule my-7 w-full" />
 
       {pago ? <PagoBanner status={pago} /> : null}
+      {rejectedTransfers?.length ? (
+        <RejectedTransfers
+          names={rejectedTransfers.map((r) => {
+            const p = r.packages as { name: string } | { name: string }[] | null;
+            return (Array.isArray(p) ? p[0]?.name : p?.name) ?? "tu paquete";
+          })}
+          whatsapp={studio?.whatsapp ?? ""}
+        />
+      ) : null}
       {suscripcion ? (
         <div className="mb-8 rounded-2xl bg-gold-soft/40 px-6 py-4 text-sm text-ink">
           ¡Gracias! Tu suscripción se está activando. Se reflejará en unos
@@ -347,6 +381,10 @@ function PagoBanner({ status }: { status: string }) {
       text: "Tu pago está pendiente de confirmación.",
       ok: true,
     },
+    transferencia: {
+      text: "¡Gracias! Recibimos tu comprobante y tus clases ya están disponibles.",
+      ok: true,
+    },
     error: { text: "El pago no se completó. Intenta de nuevo.", ok: false },
   };
   const m = map[status] ?? map.error;
@@ -357,6 +395,46 @@ function PagoBanner({ status }: { status: string }) {
       }`}
     >
       {m.text}
+    </div>
+  );
+}
+
+/** La transferencia no llegó (o no cuadró): el admin la rechazó y retiró las clases. */
+function RejectedTransfers({
+  names,
+  whatsapp,
+}: {
+  names: string[];
+  whatsapp: string;
+}) {
+  const wa = whatsappUrl(
+    whatsapp,
+    "Hola, me aparece que mi transferencia no se pudo confirmar. ¿Me ayudan a revisarla?",
+  );
+  return (
+    <div className="mb-8 rounded-2xl bg-pink-soft/60 px-6 py-4 text-sm text-pink-strong">
+      <p className="flex items-center gap-2">
+        <Landmark size={15} strokeWidth={1.5} />
+        No pudimos confirmar tu transferencia de{" "}
+        {names.length === 1 ? names[0] : `${names.length} paquetes`}, así que
+        esas clases se retiraron de tu cuenta.
+      </p>
+      <p className="mt-1.5 text-ink-soft">
+        Si ya transferiste,{" "}
+        {wa ? (
+          <a
+            href={wa}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-pink-strong underline underline-offset-2"
+          >
+            escríbenos por WhatsApp
+          </a>
+        ) : (
+          "escríbenos"
+        )}{" "}
+        y lo revisamos juntas.
+      </p>
     </div>
   );
 }

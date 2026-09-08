@@ -72,12 +72,19 @@ export function PaymentsRealtime() {
         "postgres_changes",
         { event: "*", schema: "public", table: "purchases" },
         (payload) => {
-          const row = payload.new as { status?: string } | null;
+          const row = payload.new as
+            | { status?: string; method?: string }
+            | null;
+          const transfer =
+            payload.eventType === "INSERT" && row?.method === "transfer";
           const approved =
             (payload.eventType === "UPDATE" || payload.eventType === "INSERT") &&
             row?.status === "approved";
 
-          if (approved) {
+          if (transfer) {
+            chime();
+            pushToast("🏦 Nueva transferencia por revisar");
+          } else if (approved) {
             chime();
             pushToast("💸 ¡Nuevo pago recibido!");
           }

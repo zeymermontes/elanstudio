@@ -16,6 +16,10 @@ export type SiteSettings = {
   email: string;
   instagram: string;
   address: string;
+  /** Pago por transferencia: se ofrece en el checkout junto a la tarjeta. */
+  transferEnabled: boolean;
+  /** Cuentas del estudio tal cual se muestran (banco, titular, CLABE…). */
+  transferAccounts: string;
 };
 
 export const defaultSettings: SiteSettings = {
@@ -28,6 +32,8 @@ export const defaultSettings: SiteSettings = {
   email: "hola@elanstudio.com",
   instagram: "elanstudio",
   address: "Ciudad de México",
+  transferEnabled: false,
+  transferAccounts: "",
 };
 
 /**
