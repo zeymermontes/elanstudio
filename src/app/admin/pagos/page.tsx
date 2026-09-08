@@ -1,10 +1,11 @@
-import { Landmark, CreditCard, ExternalLink } from "lucide-react";
+import { Landmark, CreditCard } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatMxn, formatDayLabel, formatTime, cap } from "@/lib/format";
 import { getStudioUtcOffset } from "@/lib/data";
 import { PaymentsRealtime } from "@/components/admin/payments-realtime";
 import { TransferReview } from "@/components/admin/transfer-review";
+import { ReceiptViewer } from "@/components/admin/receipt-viewer";
 import { requireAdmin } from "@/lib/auth";
 import { paymentRejectionMessage } from "@/lib/mp-errors";
 import { RECEIPTS_BUCKET, RECEIPT_LINK_SECONDS } from "@/lib/receipts";
@@ -127,7 +128,11 @@ export default async function AdminPagosPage() {
                     <span className="text-ink">{formatMxn(Number(r.amount_mxn))}</span>
                   </p>
                   <p className="mt-0.5 text-xs text-ink-soft">{when(r.created_at)}</p>
-                  <ReceiptLink url={r.receipt_path ? receiptUrls.get(r.receipt_path) : undefined} />
+                  <ReceiptLink
+                    path={r.receipt_path}
+                    url={r.receipt_path ? receiptUrls.get(r.receipt_path) : undefined}
+                    memberName={names.get(r.user_id) ?? "la alumna"}
+                  />
                 </div>
                 <TransferReview
                   purchaseId={r.id}
@@ -182,7 +187,9 @@ export default async function AdminPagosPage() {
                         </span>
                         {transfer ? (
                           <ReceiptLink
+                            path={r.receipt_path}
                             url={r.receipt_path ? receiptUrls.get(r.receipt_path) : undefined}
+                            memberName={names.get(r.user_id) ?? "la alumna"}
                           />
                         ) : null}
                       </td>
@@ -236,17 +243,22 @@ export default async function AdminPagosPage() {
   );
 }
 
-function ReceiptLink({ url }: { url: string | undefined }) {
-  if (!url)
+function ReceiptLink({
+  path,
+  url,
+  memberName,
+}: {
+  path: string | null;
+  url: string | undefined;
+  memberName: string;
+}) {
+  if (!url || !path)
     return <p className="mt-1.5 text-xs text-ink-soft/70">Sin comprobante</p>;
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="mt-1.5 inline-flex items-center gap-1 text-xs text-pink-strong underline underline-offset-2"
-    >
-      Ver comprobante <ExternalLink size={11} strokeWidth={1.75} />
-    </a>
+    <ReceiptViewer
+      url={url}
+      isPdf={path.toLowerCase().endsWith(".pdf")}
+      memberName={memberName}
+    />
   );
 }
