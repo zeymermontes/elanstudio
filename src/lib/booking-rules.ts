@@ -24,7 +24,11 @@ export const CANCEL_WINDOW_NOTE = `Puedes cancelar hasta ${CANCEL_WINDOW_HOURS} 
 // ---------------------------------------------------------------------------
 
 /** A class nobody has booked closes this many hours before it starts. */
-export const EMPTY_CLASS_CUTOFF_HOURS = 2;
+export const EMPTY_CLASS_CUTOFF_HOURS: number = 1;
+
+/** "1 hora" / "2 horas" — for the copy that explains the cutoff. */
+export const EMPTY_CLASS_CUTOFF_LABEL =
+  EMPTY_CLASS_CUTOFF_HOURS === 1 ? "1 hora" : `${EMPTY_CLASS_CUTOFF_HOURS} horas`;
 
 /** A class that already has someone stays open until this many minutes before. */
 export const LAST_MINUTE_CUTOFF_MIN = 1;
@@ -59,7 +63,7 @@ export const WINDOW_LABEL: Record<Exclude<BookingWindow, "open">, string> = {
 };
 
 /** One-line explanation of the booking window, for tooltips and empty states. */
-export const BOOKING_WINDOW_NOTE = `Puedes reservar hasta ${LAST_MINUTE_CUTOFF_MIN} minuto antes de la clase. Si nadie ha reservado, cerramos ${EMPTY_CLASS_CUTOFF_HOURS} horas antes para avisarle a tu coach.`;
+export const BOOKING_WINDOW_NOTE = `Puedes reservar hasta ${LAST_MINUTE_CUTOFF_MIN} minuto antes de la clase. Si nadie ha reservado, cerramos ${EMPTY_CLASS_CUTOFF_LABEL} antes para avisarle a tu coach.`;
 
 /**
  * Label for a slot's reserve CTA when it can't be booked, or null when it can.

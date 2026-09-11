@@ -7,10 +7,10 @@ import {
 } from "@/lib/admin-data";
 import { CheckInRow } from "@/components/admin/check-in";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
-import { bookingWindow, EMPTY_CLASS_CUTOFF_HOURS } from "@/lib/booking-rules";
+import { bookingWindow, EMPTY_CLASS_CUTOFF_LABEL } from "@/lib/booking-rules";
 
 /** Shown on a class with nobody in it — the whole point of the early cutoff. */
-const NO_ONE_COMING = `Nadie reservó y las reservas cerraron ${EMPTY_CLASS_CUTOFF_HOURS} horas antes: esta clase no se abre, no necesitas venir.`;
+const NO_ONE_COMING = `Nadie reservó y las reservas cerraron ${EMPTY_CLASS_CUTOFF_LABEL} antes: esta clase no se abre, no necesitas venir.`;
 
 export const dynamic = "force-dynamic";
 
