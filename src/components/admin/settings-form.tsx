@@ -96,6 +96,28 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
         </p>
       </div>
 
+      <div className="surface-card rounded-2xl px-7 py-7 shadow-soft">
+        <h2 className="mb-1 font-serif text-2xl text-ink">Pixel de Meta</h2>
+        <p className="mb-5 text-xs text-ink-soft">
+          Para medir visitas desde tus anuncios de Facebook e Instagram. Pega
+          el id que aparece en Meta Events Manager; déjalo vacío si no usas
+          anuncios.
+        </p>
+        <Field label="Id del pixel">
+          <input
+            name="meta_pixel_id"
+            inputMode="numeric"
+            defaultValue={settings.metaPixelId}
+            placeholder="123456789012345"
+            className={inputClass}
+          />
+        </Field>
+        <p className="mt-2 text-xs text-ink-soft">
+          No se carga dentro del panel de administración, solo en el sitio
+          público.
+        </p>
+      </div>
+
       <SaveButton label="Guardar cambios" />
     </form>
   );

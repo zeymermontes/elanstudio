@@ -28,7 +28,7 @@ services:
         value: dev_96ef27a377d611f19997d6613c0d9962
       - key: NEXT_PUBLIC_SITE_URL
         sync: false
-      # Pixel de Meta. Se lee en el servidor, así que basta reiniciar para
-      # cambiarlo — no hace falta volver a compilar.
+      # Pixel de Meta. Respaldo opcional: el id normalmente se pone desde el
+      # admin (Marca & Ajustes). Se lee en el servidor, basta reiniciar.
       - key: META_PIXEL_ID
         sync: false

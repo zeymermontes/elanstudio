@@ -67,7 +67,9 @@ export default async function RootLayout({
         <style dangerouslySetInnerHTML={{ __html: themeOverride }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <MetaPixel pixelId={process.env.META_PIXEL_ID ?? ""} />
+        <MetaPixel
+          pixelId={settings.metaPixelId || process.env.META_PIXEL_ID || ""}
+        />
         <RecoveryHandler />
         <SiteHeader studioName={settings.studioName} isAdmin={isStaff} />
         <main className="flex-1">{children}</main>

@@ -20,6 +20,8 @@ export type SiteSettings = {
   transferEnabled: boolean;
   /** Cuentas del estudio tal cual se muestran (banco, titular, CLABE…). */
   transferAccounts: string;
+  /** Id del Pixel de Meta (Facebook/Instagram). Vacío = no se carga. */
+  metaPixelId: string;
 };
 
 export const defaultSettings: SiteSettings = {
@@ -34,6 +36,7 @@ export const defaultSettings: SiteSettings = {
   address: "Ciudad de México",
   transferEnabled: false,
   transferAccounts: "",
+  metaPixelId: "",
 };
 
 /**

@@ -49,6 +49,7 @@ export async function getSettings(): Promise<SiteSettings> {
     address: data.address ?? "",
     transferEnabled: Boolean(data.transfer_enabled),
     transferAccounts: data.transfer_accounts ?? "",
+    metaPixelId: data.meta_pixel_id ?? "",
   };
 }
 

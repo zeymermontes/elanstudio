@@ -52,6 +52,16 @@ export async function updateSettingsAction(
   const supabase = await adminClient();
   if (!supabase) return { error: NOT_CONFIGURED };
 
+  // El id del pixel es un número largo; si pegan la URL o el snippet entero
+  // no cuadra y es mejor avisar que cargar un pixel que no existe.
+  const metaPixelId = str(fd, "meta_pixel_id").replace(/\s+/g, "");
+  if (metaPixelId && !/^\d{5,25}$/.test(metaPixelId)) {
+    return {
+      error:
+        "El id del Pixel de Meta debe ser solo números (lo encuentras en Meta Events Manager).",
+    };
+  }
+
   const { error } = await supabase
     .from("site_settings")
     .update({
@@ -66,6 +76,7 @@ export async function updateSettingsAction(
       address: str(fd, "address"),
       transfer_enabled: fd.get("transfer_enabled") === "on",
       transfer_accounts: str(fd, "transfer_accounts"),
+      meta_pixel_id: metaPixelId,
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);

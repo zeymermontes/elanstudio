@@ -13,10 +13,10 @@ declare global {
 /**
  * Pixel de Meta (Facebook / Instagram).
  *
- * El id llega como prop desde el layout, que lo lee de META_PIXEL_ID en el
- * servidor. A propósito no es NEXT_PUBLIC_: esas se congelan al compilar, así
- * que poner el pixel después obligaría a volver a desplegar; leído en el
- * servidor basta con reiniciar. Sin la variable esto no pinta nada.
+ * El id llega como prop desde el layout: primero el que se guardó en Marca &
+ * Ajustes (site_settings.meta_pixel_id) y, si está vacío, META_PIXEL_ID del
+ * entorno como respaldo. A propósito no es NEXT_PUBLIC_: esas se congelan al
+ * compilar. Sin id esto no pinta nada.
  *
  * No se carga en /admin: son las visitas del estudio a su propio panel y solo
  * ensucian las audiencias.
