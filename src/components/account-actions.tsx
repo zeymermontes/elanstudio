@@ -6,6 +6,7 @@ import { reserveAction, cancelAction } from "@/lib/actions/booking";
 import { bookingMessage } from "@/lib/booking-messages";
 import { CANCEL_WINDOW_NOTE } from "@/lib/booking-rules";
 import { cancelSubscriptionAction } from "@/lib/actions/subscription";
+import { trackPixel } from "@/lib/pixel";
 
 /**
  * Confirmation card shown when arriving at /cuenta?reservar=<ref>.
@@ -32,7 +33,10 @@ export function ConfirmReserve({
     start(async () => {
       const res = await reserveAction(refStr);
       setMsg({ ok: res.ok, text: bookingMessage(res.code) });
-      if (res.ok) router.refresh();
+      if (res.ok) {
+        trackPixel("Schedule"); // Pixel: reservó una clase
+        router.refresh();
+      }
     });
   }
 

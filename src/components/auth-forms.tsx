@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { MailCheck, Inbox, CheckCircle2 } from "lucide-react";
 import {
@@ -11,6 +11,7 @@ import {
   resendConfirmationAction,
   type AuthState,
 } from "@/lib/actions/auth";
+import { trackPixel } from "@/lib/pixel";
 
 const inputClass =
   "w-full rounded-xl border border-line bg-surface/70 px-4 py-3 text-sm text-ink outline-none transition-colors placeholder:text-ink-soft/60 focus:border-pink";
@@ -172,6 +173,14 @@ export function SignUpForm() {
     signUpAction,
     null,
   );
+
+  // Pixel: cuenta creada. Se mide aquí, al recibir el "revisa tu correo", y
+  // no al confirmar el enlace, porque eso puede pasar días después y desde
+  // otro dispositivo.
+  const registered = Boolean(state?.success);
+  useEffect(() => {
+    if (registered) trackPixel("CompleteRegistration");
+  }, [registered]);
 
   // After signup with email confirmation, replace the form with a check-inbox note.
   if (state?.success) {

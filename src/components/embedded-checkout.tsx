@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { initMercadoPago, CardPayment } from "@mercadopago/sdk-react";
 import { paymentRejectionMessage } from "@/lib/mp-errors";
 import { PromoSection, type CheckoutPromo } from "@/components/promo-section";
+import { trackPixel, packageParams } from "@/lib/pixel";
 
 export type { CheckoutPromo };
 
@@ -18,12 +19,14 @@ export type { CheckoutPromo };
  */
 export function EmbeddedCheckout({
   packageId,
+  packageName,
   amount,
   publicKey,
   initialPromo = null,
   payerEmail = null,
 }: {
   packageId: string;
+  packageName?: string;
   /** List price of the package, before any discount. */
   amount: number;
   publicKey: string;
@@ -115,6 +118,12 @@ export function EmbeddedCheckout({
           }}
           onSubmit={async (formData) => {
             setError(null);
+            // Pixel: llenó la tarjeta y tocó pagar. Si el cobro no pasa, esto
+            // queda sin Purchase y así se ve dónde se cae el embudo.
+            trackPixel(
+              "InitiateCheckout",
+              packageParams({ id: packageId, name: packageName, valueMxn: total }),
+            );
             const res = await fetch("/api/mp/process", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -122,6 +131,15 @@ export function EmbeddedCheckout({
             });
             const data = await res.json();
             if (data.status === "approved") {
+              trackPixel(
+                "Purchase",
+                packageParams({
+                  id: packageId,
+                  name: packageName,
+                  valueMxn: Number(data.amountMxn) || total,
+                }),
+                data.purchaseId,
+              );
               router.push("/cuenta?pago=ok");
             } else if (
               data.status === "in_process" ||

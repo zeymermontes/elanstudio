@@ -16,6 +16,7 @@ type Method = "card" | "transfer";
  */
 export function PaymentMethods({
   packageId,
+  packageName,
   amount,
   publicKey,
   payerEmail,
@@ -23,6 +24,7 @@ export function PaymentMethods({
   transferAccounts,
 }: {
   packageId: string;
+  packageName: string;
   amount: number;
   publicKey: string;
   payerEmail: string | null;
@@ -64,6 +66,7 @@ export function PaymentMethods({
         <>
           <EmbeddedCheckout
             packageId={packageId}
+            packageName={packageName}
             amount={amount}
             publicKey={publicKey}
             payerEmail={payerEmail}
@@ -76,6 +79,7 @@ export function PaymentMethods({
       ) : (
         <TransferCheckout
           packageId={packageId}
+          packageName={packageName}
           amount={amount}
           accounts={transferAccounts}
           initialPromo={initialPromo}

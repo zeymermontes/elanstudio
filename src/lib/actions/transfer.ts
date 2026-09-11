@@ -8,7 +8,13 @@ import { resolveStock } from "@/lib/stock";
 import { RECEIPTS_BUCKET } from "@/lib/receipts";
 import type { Package } from "@/lib/types";
 
-export type TransferResult = { ok: boolean; error?: string };
+export type TransferResult = {
+  ok: boolean;
+  error?: string;
+  /** Para el evento Purchase del pixel. */
+  purchaseId?: string;
+  amountMxn?: number;
+};
 
 /**
  * Asiento negativo con el que se retiran las clases de una transferencia
@@ -146,7 +152,7 @@ export async function submitTransferAction(input: {
 
   revalidatePath("/cuenta");
   revalidatePath("/admin", "layout"); // el contador del menú
-  return { ok: true };
+  return { ok: true, purchaseId: purchase.id, amountMxn: chargeMxn };
 }
 
 export type TransferDecision = "approve" | "reject";

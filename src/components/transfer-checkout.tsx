@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Landmark, Upload, Check, Loader2 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -8,6 +8,7 @@ import { submitTransferAction } from "@/lib/actions/transfer";
 import { RECEIPTS_BUCKET } from "@/lib/receipts";
 import { formatMxn } from "@/lib/format";
 import { PromoSection, type CheckoutPromo } from "@/components/promo-section";
+import { trackPixel, packageParams } from "@/lib/pixel";
 
 /**
  * Pago por transferencia: la alumna ve las cuentas del estudio, transfiere el
@@ -21,11 +22,13 @@ import { PromoSection, type CheckoutPromo } from "@/components/promo-section";
  */
 export function TransferCheckout({
   packageId,
+  packageName,
   amount,
   accounts,
   initialPromo = null,
 }: {
   packageId: string;
+  packageName?: string;
   /** Precio de lista, antes de descuentos. */
   amount: number;
   /** Datos de las cuentas tal cual los escribió el admin. */
@@ -40,6 +43,7 @@ export function TransferCheckout({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const checkoutTracked = useRef(false);
 
   const total = promo?.finalMxn ?? amount;
 
@@ -47,6 +51,16 @@ export function TransferCheckout({
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
+
+    // Pixel: subir el comprobante es el primer paso real del pago. Una vez
+    // por checkout, aunque cambie el archivo.
+    if (!checkoutTracked.current) {
+      checkoutTracked.current = true;
+      trackPixel(
+        "InitiateCheckout",
+        packageParams({ id: packageId, name: packageName, valueMxn: total }),
+      );
+    }
 
     const supabase = createSupabaseBrowserClient();
     if (!supabase) {
@@ -88,8 +102,20 @@ export function TransferCheckout({
         receiptPath,
         promoCode: appliedCode,
       });
-      if (res.ok) router.push("/cuenta?pago=transferencia");
-      else setError(res.error ?? "No se pudo registrar tu pago.");
+      if (res.ok) {
+        // Cuenta como compra desde ya: las clases se acreditan al momento y
+        // el rechazo posterior es la excepción.
+        trackPixel(
+          "Purchase",
+          packageParams({
+            id: packageId,
+            name: packageName,
+            valueMxn: res.amountMxn ?? total,
+          }),
+          res.purchaseId,
+        );
+        router.push("/cuenta?pago=transferencia");
+      } else setError(res.error ?? "No se pudo registrar tu pago.");
     });
   }
 

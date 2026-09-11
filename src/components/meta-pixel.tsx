@@ -3,12 +3,7 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-
-declare global {
-  interface Window {
-    fbq?: (...args: unknown[]) => void;
-  }
-}
+import { trackPixel } from "@/lib/pixel";
 
 /**
  * Pixel de Meta (Facebook / Instagram).
@@ -20,6 +15,10 @@ declare global {
  *
  * No se carga en /admin: son las visitas del estudio a su propio panel y solo
  * ensucian las audiencias.
+ *
+ * Los demás eventos (compra, registro, reserva…) salen de src/lib/pixel.ts
+ * desde cada flujo. Aquí solo va Contact, porque los enlaces de WhatsApp están
+ * repartidos por el sitio y es más simple escucharlos en un solo lugar.
  */
 export function MetaPixel({ pixelId }: { pixelId: string }) {
   const pathname = usePathname();
@@ -34,6 +33,16 @@ export function MetaPixel({ pixelId }: { pixelId: string }) {
     }
     window.fbq?.("track", "PageView");
   }, [pathname]);
+
+  useEffect(() => {
+    if (!pixelId) return;
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest("a[href]");
+      if (a && a.getAttribute("href")?.includes("wa.me/")) trackPixel("Contact");
+    };
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, [pixelId]);
 
   if (!pixelId || pathname.startsWith("/admin")) return null;
 

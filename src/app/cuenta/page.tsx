@@ -19,6 +19,8 @@ import { OnboardingForm } from "@/components/onboarding-form";
 import { decodeRef } from "@/lib/schedule-ref";
 import { getSettings } from "@/lib/data";
 import { whatsappUrl } from "@/lib/site";
+import { PixelEventOnMount } from "@/components/pixel-event";
+import { packageParams } from "@/lib/pixel";
 import {
   formatDayLabel,
   formatTime,
@@ -123,6 +125,37 @@ export default async function CuentaPage({
         .order("reviewed_at", { ascending: false }),
     ]);
 
+  // Vuelta de Mercado Pago tras autorizar el plan mensual: el pixel marca la
+  // suscripción con el precio del plan. El webhook puede no haber llegado
+  // todavía, así que se toma la última fila de la alumna, esté en pending o
+  // ya authorized.
+  let subPixel: { id: string; params: ReturnType<typeof packageParams> } | null =
+    null;
+  if (suscripcion) {
+    const { data: latest } = await supabase
+      .from("subscriptions")
+      .select("id, packages(id, name, price_mxn)")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const p = latest?.packages as
+      | { id: string; name: string; price_mxn: number }
+      | { id: string; name: string; price_mxn: number }[]
+      | null;
+    const pkg = Array.isArray(p) ? p[0] : p;
+    if (latest && pkg) {
+      subPixel = {
+        id: latest.id,
+        params: packageParams({
+          id: pkg.id,
+          name: pkg.name,
+          valueMxn: Number(pkg.price_mxn),
+        }),
+      };
+    }
+  }
+
   // Server component (force-dynamic): reading the current time is intentional.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
@@ -217,7 +250,7 @@ export default async function CuentaPage({
       )} ${formatTime(startsAt, off)}`;
 
       // A recurring slot only has a session row once someone books it, so no
-      // row means nobody has — which is exactly what closes it 2 h ahead.
+      // row means nobody has — which is exactly what closes it 1 h ahead.
       const { data: mat } = await supabase
         .from("class_sessions")
         .select("id")
@@ -280,6 +313,22 @@ export default async function CuentaPage({
           ¡Gracias! Tu suscripción se está activando. Se reflejará en unos
           momentos.
         </div>
+      ) : null}
+      {suscripcion && subPixel ? (
+        <>
+          <PixelEventOnMount
+            event="Subscribe"
+            params={subPixel.params}
+            eventId={subPixel.id}
+            once={`sub-${subPixel.id}`}
+          />
+          <PixelEventOnMount
+            event="Purchase"
+            params={subPixel.params}
+            eventId={subPixel.id}
+            once={`sub-purchase-${subPixel.id}`}
+          />
+        </>
       ) : null}
 
       {reservar && reservarLabel ? (

@@ -12,6 +12,8 @@ import { formatMxn } from "@/lib/format";
 import { EmbeddedCheckout } from "@/components/embedded-checkout";
 import { PaymentMethods } from "@/components/payment-methods";
 import { SubscribeButton } from "@/components/subscribe-button";
+import { PixelEventOnMount } from "@/components/pixel-event";
+import { packageParams } from "@/lib/pixel";
 
 export const metadata: Metadata = { title: "Comprar" };
 export const dynamic = "force-dynamic";
@@ -69,6 +71,14 @@ export default async function ComprarPage({
 
   return (
     <div className="mx-auto max-w-xl px-5 py-14">
+      <PixelEventOnMount
+        event="ViewContent"
+        params={packageParams({
+          id: pkg.id,
+          name: pkg.name,
+          valueMxn: promo?.finalMxn ?? pkg.priceMxn,
+        })}
+      />
       <Link
         href="/paquetes"
         className="mb-6 inline-flex items-center gap-2 text-[0.75rem] uppercase tracking-[0.15em] text-ink-soft transition-colors hover:text-pink-strong"
@@ -120,13 +130,18 @@ export default async function ComprarPage({
         {pkg.recurring ? (
           <div className="surface-card rounded-2xl px-7 py-7 shadow-soft">
             <h2 className="mb-4 font-serif text-2xl text-ink">Suscripción</h2>
-            <SubscribeButton packageId={pkg.id} />
+            <SubscribeButton
+              packageId={pkg.id}
+              packageName={pkg.name}
+              amount={pkg.priceMxn}
+            />
           </div>
         ) : offerTransfer ? (
           <div>
             <h2 className="mb-4 font-serif text-2xl text-ink">¿Cómo quieres pagar?</h2>
             <PaymentMethods
               packageId={pkg.id}
+              packageName={pkg.name}
               amount={pkg.priceMxn}
               publicKey={publicKey}
               payerEmail={userEmail}
@@ -139,6 +154,7 @@ export default async function ComprarPage({
             <h2 className="mb-4 font-serif text-2xl text-ink">Datos de pago</h2>
             <EmbeddedCheckout
               packageId={pkg.id}
+              packageName={pkg.name}
               amount={pkg.priceMxn}
               publicKey={publicKey}
               payerEmail={userEmail}

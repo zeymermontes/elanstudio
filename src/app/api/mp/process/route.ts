@@ -196,6 +196,9 @@ export async function POST(req: NextRequest) {
       message:
         dbStatus === "rejected" ? paymentRejectionMessage(statusDetail) : null,
       purchaseId: purchase.id,
+      // Para el evento Purchase del pixel: lo que de verdad se cobró, con
+      // descuento, y no lo que la página mostraba al cargar.
+      amountMxn: chargeMxn,
     });
   } catch (err) {
     // Log the API's own words. A malformed payload and a declined card both land

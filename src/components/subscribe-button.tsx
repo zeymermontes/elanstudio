@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { startSubscriptionAction } from "@/lib/actions/subscription";
+import { trackPixel, packageParams } from "@/lib/pixel";
 
 const ERRORS: Record<string, string> = {
   not_configured: "Las suscripciones aún no están disponibles. Vuelve pronto.",
@@ -17,13 +18,28 @@ const ERRORS: Record<string, string> = {
  * redirects the user to Mercado Pago's hosted authorization (one time); after
  * that, MP charges monthly automatically.
  */
-export function SubscribeButton({ packageId }: { packageId: string }) {
+export function SubscribeButton({
+  packageId,
+  packageName,
+  amount,
+}: {
+  packageId: string;
+  packageName?: string;
+  /** Precio mensual, para el pixel. */
+  amount: number;
+}) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   function subscribe() {
     setError(null);
+    // Pixel: el pago se autoriza en Mercado Pago; la vuelta a /cuenta marca
+    // el Purchase.
+    trackPixel(
+      "InitiateCheckout",
+      packageParams({ id: packageId, name: packageName, valueMxn: amount }),
+    );
     start(async () => {
       const res = await startSubscriptionAction(packageId);
       if (res.url) {
