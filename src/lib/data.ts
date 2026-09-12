@@ -7,7 +7,7 @@
  */
 import { createSupabaseServerClient } from "./supabase/server";
 import { defaultSettings, type SiteSettings } from "./site";
-import { DEFAULT_UTC_OFFSET_MIN, zonedToUtc } from "./format";
+import { DEFAULT_UTC_OFFSET_MIN, dayKey, zonedToUtc } from "./format";
 import {
   services as seedServices,
   classTypes as seedClassTypes,
@@ -252,13 +252,6 @@ async function getBookedCounts(
   return counts;
 }
 
-function isoDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 /** All recurring weekly classes (template). */
 export async function getWeeklyClasses(): Promise<WeeklyClass[]> {
   const supabase = await createSupabaseServerClient();
@@ -416,8 +409,14 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
 
   const [weekly] = await Promise.all([getWeeklyClasses()]);
 
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
+  // "Hoy" se ancla al huso del estudio, no al del servidor. Render corre en
+  // UTC, así que con new Date().setHours(0) el día cambiaba a las 6 pm de
+  // CDMX (5 pm en Sinaloa) y el horario dejaba de mostrar las clases que
+  // faltaban de ese día, aunque no hubieran empezado.
+  const studioOffset =
+    locations[0]?.utcOffsetMin ?? DEFAULT_UTC_OFFSET_MIN;
+  const todayStr = dayKey(new Date().toISOString(), studioOffset);
+  const start = zonedToUtc(todayStr, "00:00", studioOffset);
   const end = new Date(start.getTime() + daysAhead * 86400000);
 
   const { data: sessionsRaw } = await supabase
@@ -444,10 +443,15 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
   const slots: ScheduleSlot[] = [];
 
   for (let d = 0; d < daysAhead; d++) {
-    const day = new Date(start);
-    day.setDate(start.getDate() + d);
-    const weekday = day.getDay();
-    const dateStr = isoDate(day);
+    // Fecha de calendario del estudio; en UTC para que el huso del servidor
+    // no toque ni el día ni el weekday.
+    const day = new Date(Date.UTC(
+      Number(todayStr.slice(0, 4)),
+      Number(todayStr.slice(5, 7)) - 1,
+      Number(todayStr.slice(8, 10)) + d,
+    ));
+    const weekday = day.getUTCDay();
+    const dateStr = day.toISOString().slice(0, 10);
 
     for (const w of weekly) {
       if (!w.active || w.weekday !== weekday) continue;
