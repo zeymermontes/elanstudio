@@ -33,6 +33,12 @@ export const metadata: Metadata = {
     description:
       "Estudio boutique de fitness. Reserva tus clases y descubre nuestros paquetes.",
   },
+  other: {
+    // Verificación del dominio elanstudio.mx en Meta (Business Settings →
+    // Dominios). Es un código fijo de una sola vez; va en el layout raíz para
+    // que salga en el <head> de todas las páginas, incluida la de inicio.
+    "facebook-domain-verification": "xis6pph9jmbx61peh46ptxpsn3y7z8",
+  },
 };
 
 export default async function RootLayout({
