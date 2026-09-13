@@ -526,8 +526,24 @@ export async function saveWeeklyClassAction(
     : await supabase.from("weekly_classes").insert(row);
   if (error) return { error: error.message };
 
+  // Las fechas que ya tienen reservas existen como fila propia (materialize_
+  // session copia coach y cupo de la plantilla al crearla), así que cambiar la
+  // coach aquí las dejaba con la anterior: el admin veía a la nueva y el sitio
+  // seguía mostrando a la de antes. Se propaga a las sesiones futuras que
+  // siguen programadas; las canceladas y las pasadas se quedan como estaban.
+  if (id) {
+    const { error: propagateError } = await supabase
+      .from("class_sessions")
+      .update({ coach_id: row.coach_id, capacity: row.capacity })
+      .eq("weekly_class_id", id)
+      .eq("status", "scheduled")
+      .gte("starts_at", new Date().toISOString());
+    if (propagateError) return { error: propagateError.message };
+  }
+
   revalidatePath("/admin/horario");
   revalidatePath("/horarios");
+  revalidatePath("/cuenta"); // las reservas muestran a la coach
   return { ok: true };
 }
 
