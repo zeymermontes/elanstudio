@@ -90,7 +90,7 @@ export default async function CuentaPage({
 
   const [
     { data: profile },
-    { data: balance },
+    { data: balance, error: balanceError },
     { data: bookings },
     { data: sub },
     { data: rejectedTransfers },
@@ -270,6 +270,9 @@ export default async function CuentaPage({
   const studio = rejectedTransfers?.length ? await getSettings() : null;
 
   const firstName = (profile?.full_name ?? "").split(" ")[0] || "Bienvenida";
+  // Un saldo que falla se pinta como 0 y la alumna cree que perdió sus
+  // clases: que al menos quede rastro en los logs.
+  if (balanceError) console.error("credit_balance", balanceError.message);
   const credits = (balance as number | null) ?? 0;
 
   return (
