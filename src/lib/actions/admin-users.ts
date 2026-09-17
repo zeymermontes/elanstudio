@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { getProfile } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getStudioUtcOffset } from "@/lib/data";
+import { endOfDayUtc } from "@/lib/format";
 import type { FormState } from "@/lib/actions/admin";
 
 const NOT_CONFIGURED =
@@ -46,7 +48,7 @@ export async function adjustCreditsAction(
   const expiresStr = str(fd, "expires_at");
   const expires_at =
     sign > 0 && expiresStr
-      ? new Date(`${expiresStr}T23:59:59`).toISOString()
+      ? endOfDayUtc(expiresStr, await getStudioUtcOffset()).toISOString()
       : null;
 
   const { error } = await admin.from("credit_ledger").insert({
@@ -56,6 +58,73 @@ export async function adjustCreditsAction(
     expires_at,
   });
   if (error) return { error: error.message };
+
+  revalidatePath(`/admin/usuarios/${userId}`);
+  revalidatePath("/admin/usuarios");
+  return { ok: true };
+}
+
+/**
+ * Mover el vencimiento de las clases sin usar de una alumna (vencidas o por
+ * vencer). "from" es el vencimiento actual del lote, tal cual lo devuelve
+ * credit_lots.
+ *
+ * Se mueven TODOS los asientos de la alumna con ese vencimiento, no solo el
+ * abono: el -1 de cada reserva anota el vencimiento del lote que gastó, y si
+ * se quedara con la fecha vieja, cancelar esa reserva devolvería un crédito
+ * ya vencido. Como el saldo se calcula reproduciendo el ledger, una reserva
+ * hecha después del vencimiento viejo puede pasar a cargarse a este lote en
+ * vez de a otro: el total de clases no cambia.
+ *
+ * Deja un asiento de 0 ('extension') para que el movimiento quede a la vista.
+ */
+export async function extendExpiryAction(
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  if (!(await ensureAdmin())) return { error: "No autorizado." };
+  const admin = createSupabaseAdminClient();
+  if (!admin) return { error: NOT_CONFIGURED };
+
+  const userId = str(fd, "user_id");
+  const from = str(fd, "from");
+  const expiresStr = str(fd, "expires_at");
+  if (!userId || !from) return { error: "Elige qué clases extender." };
+  if (!expiresStr) return { error: "Elige la nueva fecha de vencimiento." };
+
+  const newExpiry = endOfDayUtc(expiresStr, await getStudioUtcOffset());
+  if (newExpiry.getTime() <= Date.now())
+    return { error: "La nueva fecha ya pasó. Elige una de hoy en adelante." };
+
+  // Se vuelve a leer el lote: la ficha pudo quedar abierta y la alumna haber
+  // reservado mientras tanto. De paso se usa la fecha exacta de la base.
+  const { data: lots, error: lotsError } = await admin.rpc("credit_lots", {
+    p_user: userId,
+  });
+  if (lotsError) return { error: lotsError.message };
+  const fromMs = new Date(from).getTime();
+  const lot = ((lots ?? []) as { expires_at: string | null }[]).find(
+    (l) => l.expires_at && new Date(l.expires_at).getTime() === fromMs,
+  );
+  if (!lot?.expires_at)
+    return { error: "Esas clases ya no están disponibles para extender." };
+  if (newExpiry.getTime() <= fromMs)
+    return { error: "La nueva fecha debe ser posterior al vencimiento actual." };
+
+  const { error } = await admin
+    .from("credit_ledger")
+    .update({ expires_at: newExpiry.toISOString() })
+    .eq("user_id", userId)
+    .eq("expires_at", lot.expires_at);
+  if (error) return { error: error.message };
+
+  const { error: logError } = await admin.from("credit_ledger").insert({
+    user_id: userId,
+    delta: 0,
+    reason: "extension",
+    expires_at: newExpiry.toISOString(),
+  });
+  if (logError) console.error("extension ledger", logError.message);
 
   revalidatePath(`/admin/usuarios/${userId}`);
   revalidatePath("/admin/usuarios");
@@ -144,7 +213,7 @@ export async function sellAction(
 
   const expiresStr = str(fd, "expires_at");
   const expires_at = expiresStr
-    ? new Date(`${expiresStr}T23:59:59`).toISOString()
+    ? endOfDayUtc(expiresStr, await getStudioUtcOffset()).toISOString()
     : null;
 
   const { error } = await admin.from("credit_ledger").insert({

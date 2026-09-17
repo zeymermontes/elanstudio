@@ -29,10 +29,17 @@ export async function listMembers(): Promise<MemberRow[]> {
   });
   const users = list?.users ?? [];
 
-  const [{ data: profiles }, { data: ledger }, { data: subs }, { data: bookings }] =
+  const [
+    { data: profiles },
+    { data: balances, error: balancesError },
+    { data: subs },
+    { data: bookings },
+  ] =
     await Promise.all([
       admin.from("profiles").select("id, full_name, role"),
-      admin.from("credit_ledger").select("user_id, delta"),
+      // El mismo saldo que ve la alumna y su ficha (respeta vencimientos).
+      // Sumar los deltas a mano contaba también lo ya vencido.
+      admin.rpc("credit_balances"),
       admin
         .from("subscriptions")
         .select("user_id, current_period_end")
@@ -43,9 +50,13 @@ export async function listMembers(): Promise<MemberRow[]> {
   const nameRole = new Map(
     (profiles ?? []).map((p) => [p.id, { name: p.full_name, role: p.role }]),
   );
-  const credits = new Map<string, number>();
-  for (const l of ledger ?? [])
-    credits.set(l.user_id, (credits.get(l.user_id) ?? 0) + l.delta);
+  if (balancesError) console.error("credit_balances", balancesError.message);
+  const credits = new Map<string, number>(
+    ((balances ?? []) as { user_id: string; balance: number }[]).map((b) => [
+      b.user_id,
+      b.balance,
+    ]),
+  );
   const now = Date.now();
   const subActive = new Set(
     (subs ?? [])
@@ -103,6 +114,11 @@ export type MemberDetail = {
     created_at: string;
     expires_at: string | null;
   }[];
+  /**
+   * Clases sin usar que tienen fecha de vencimiento, agrupadas por esa fecha
+   * (vencidas incluidas). Es lo que el admin puede extender.
+   */
+  lots: { expiresAt: string; remaining: number }[];
   bookings: MemberBooking[];
   history: {
     changed_at: string;
@@ -127,7 +143,13 @@ export async function getMemberDetail(
   const { data: userRes } = await admin.auth.admin.getUserById(id);
   if (!userRes?.user) return null;
 
-  const [{ data: profile }, { data: balance }, { data: sub }, { data: rawBookings }] =
+  const [
+    { data: profile },
+    { data: balance },
+    { data: rawLots },
+    { data: sub },
+    { data: rawBookings },
+  ] =
     await Promise.all([
       admin
         .from("profiles")
@@ -137,6 +159,7 @@ export async function getMemberDetail(
         .eq("id", id)
         .single(),
       admin.rpc("credit_balance", { p_user: id }),
+      admin.rpc("credit_lots", { p_user: id }),
       admin
         .from("subscriptions")
         .select("current_period_end")
@@ -175,6 +198,24 @@ export async function getMemberDetail(
   const subEnd = (sub?.current_period_end as string | null) ?? null;
   const subActive = !!sub && (!subEnd || new Date(subEnd).getTime() > now);
 
+  const lotsByExpiry = new Map<string, number>();
+  for (const l of (rawLots ?? []) as {
+    expires_at: string | null;
+    remaining: number;
+  }[]) {
+    if (!l.expires_at) continue;
+    lotsByExpiry.set(
+      l.expires_at,
+      (lotsByExpiry.get(l.expires_at) ?? 0) + l.remaining,
+    );
+  }
+  const lots = [...lotsByExpiry]
+    .map(([expiresAt, remaining]) => ({ expiresAt, remaining }))
+    .sort(
+      (a, b) =>
+        new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
+    );
+
   const bookings: MemberBooking[] = (
     (rawBookings ?? []) as unknown as {
       session_id: string;
@@ -210,6 +251,7 @@ export async function getMemberDetail(
     subActive,
     subEnd,
     ledger: ledger ?? [],
+    lots,
     bookings,
     history: history ?? [],
   };

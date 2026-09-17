@@ -7,6 +7,7 @@ import { formatDayLabel, formatCivilDate, formatTime, cap } from "@/lib/format";
 import { requireAdmin } from "@/lib/auth";
 import {
   AdjustCreditsForm,
+  ExtendExpiryForm,
   GrantSubscriptionForm,
   CancelUserSubscription,
   RoleToggle,
@@ -31,6 +32,7 @@ const REASONS: Record<string, string> = {
   refund: "Reembolso",
   manual: "Ajuste manual",
   subscription: "Suscripción",
+  extension: "Vencimiento extendido",
   transfer_rejected: "Transferencia rechazada",
 };
 
@@ -56,6 +58,22 @@ export default async function UsuarioDetailPage({
   const past = m.bookings.filter(
     (b) => b.startsAt && new Date(b.startsAt).getTime() < nowMs,
   );
+  // Vencidas primero: son las que el admin viene a rescatar.
+  const lotOptions = m.lots
+    .map((l) => {
+      const expired = new Date(l.expiresAt).getTime() < nowMs;
+      const n = `${l.remaining} ${l.remaining === 1 ? "clase" : "clases"}`;
+      const day = cap(formatDayLabel(l.expiresAt, studioOffset));
+      return {
+        value: l.expiresAt,
+        expired,
+        label: expired
+          ? `${n} · ${l.remaining === 1 ? "venció" : "vencieron"} ${day}`
+          : `${n} · ${l.remaining === 1 ? "vence" : "vencen"} ${day}`,
+      };
+    })
+    .sort((a, b) => Number(b.expired) - Number(a.expired))
+    .map(({ value, label }) => ({ value, label }));
   const attendedCount = m.bookings.filter((b) => b.attended === true).length;
 
   return (
@@ -182,6 +200,9 @@ export default async function UsuarioDetailPage({
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <AdjustCreditsForm userId={m.id} />
         <GrantSubscriptionForm userId={m.id} />
+        {lotOptions.length > 0 ? (
+          <ExtendExpiryForm userId={m.id} lots={lotOptions} />
+        ) : null}
       </div>
 
       {/* Attendances */}
@@ -266,7 +287,8 @@ export default async function UsuarioDetailPage({
                     <tr key={i} className="border-b border-line/60 last:border-0">
                       <td className="px-5 py-3 text-ink-soft">
                         {REASONS[l.reason] ?? l.reason}
-                        {l.delta > 0 && l.expires_at ? (
+                        {(l.delta > 0 || l.reason === "extension") &&
+                        l.expires_at ? (
                           <span
                             className={`ml-2 text-xs ${expired ? "text-pink-strong" : "text-ink-soft"}`}
                           >

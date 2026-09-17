@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   adjustCreditsAction,
+  extendExpiryAction,
   grantSubscriptionAction,
   cancelUserSubscriptionAction,
   setRoleAction,
@@ -103,6 +104,99 @@ export function AdjustCreditsForm({ userId }: { userId: string }) {
 
         <div className="flex justify-end">
           <SaveButton label="Aplicar" />
+        </div>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Mover el vencimiento de clases sin usar — vencidas o por vencer. Las
+ * etiquetas llegan armadas del servidor, en el huso del estudio.
+ */
+export function ExtendExpiryForm({
+  userId,
+  lots,
+}: {
+  userId: string;
+  lots: { value: string; label: string }[];
+}) {
+  const [state, action] = useActionState<FormState, FormData>(
+    extendExpiryAction,
+    null,
+  );
+  const [expiry, setExpiry] = useState(""); // yyyy-mm-dd
+  const [quick, setQuick] = useState<string>("");
+
+  function pickDays(n: number, key: string) {
+    // Called only from click handlers, never during render.
+    // eslint-disable-next-line react-hooks/purity
+    setExpiry(new Date(Date.now() + n * 86400000).toISOString().slice(0, 10));
+    setQuick(key);
+  }
+
+  const quickBtn = (key: string, label: string, days: number) => (
+    <button
+      type="button"
+      onClick={() => pickDays(days, key)}
+      className={`rounded-full px-3.5 py-1.5 text-[0.7rem] uppercase tracking-[0.12em] transition-colors ${
+        quick === key
+          ? "bg-pink text-white"
+          : "border border-line text-ink-soft hover:text-ink"
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <form action={action} className="surface-card rounded-2xl px-6 py-6 shadow-soft">
+      <input type="hidden" name="user_id" value={userId} />
+      <h3 className="mb-4 font-serif text-xl text-ink">Extender vencimiento</h3>
+      <div className="space-y-4">
+        <StatusBanner state={state} />
+        <Field label="Clases sin usar">
+          <select name="from" className={inputClass}>
+            {lots.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div>
+          <span className="mb-1.5 block text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft">
+            Nueva vigencia (desde hoy)
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {quickBtn("7", "7 días", 7)}
+            {quickBtn("15", "15 días", 15)}
+            {quickBtn("30", "30 días", 30)}
+          </div>
+          <div className="mt-3">
+            <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.12em] text-ink-soft">
+              O fecha específica
+            </span>
+            <input
+              type="date"
+              name="expires_at"
+              required
+              value={expiry}
+              onChange={(e) => {
+                setExpiry(e.target.value);
+                setQuick(e.target.value ? "custom" : "");
+              }}
+              className={inputClass}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-ink-soft">
+          Las clases vuelven a estar disponibles hasta el final del día elegido.
+          No agrega clases nuevas: solo mueve la fecha de las que quedaron sin
+          usar.
+        </p>
+        <div className="flex justify-end">
+          <SaveButton label="Extender" />
         </div>
       </div>
     </form>

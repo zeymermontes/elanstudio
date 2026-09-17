@@ -63,6 +63,16 @@ export function zonedToUtc(
 }
 
 /**
+ * Último segundo de un día civil en el huso del estudio, como instante UTC.
+ * Es el vencimiento de un crédito cuando el admin elige solo la fecha: vence
+ * al acabar ese día EN EL ESTUDIO, no al acabar el día del servidor (UTC),
+ * que en UTC-7 son las 4:59 pm.
+ */
+export function endOfDayUtc(dateStr: string, offsetMin: number): Date {
+  return new Date(zonedToUtc(dateStr, "23:59", offsetMin).getTime() + 59_000);
+}
+
+/**
  * "YYYY-MM-DDTHH:mm" for a <input type="datetime-local">, read in the studio's
  * offset. The inverse of zonedToUtc, so an admin sees back the same wall time
  * they typed regardless of where the server runs.
