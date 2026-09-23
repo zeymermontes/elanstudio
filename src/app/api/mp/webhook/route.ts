@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Payment } from "mercadopago";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { mpClient, mpHeaders } from "@/lib/mercadopago";
+import { bookPaidSeat } from "@/lib/event-checkout";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -68,12 +69,28 @@ async function handlePayment(
 
   const { data: purchase } = await admin
     .from("purchases")
-    .select("id, user_id, credits, status, packages(validity_days)")
+    .select("id, user_id, credits, status, session_id, packages(validity_days)")
     .eq("id", purchaseId)
     .single();
   if (!purchase || purchase.status === "approved") return false;
 
   const statusDetail = payment.status_detail ?? null;
+
+  // Lugar en una clase especial (0027): reservar en vez de acreditar. Igual
+  // que abajo, primero la reserva y luego el approved.
+  if (payment.status === "approved" && purchase.session_id) {
+    const booked = await bookPaidSeat(admin, purchase.user_id, purchase.session_id);
+    if (!booked) return true;
+    await admin
+      .from("purchases")
+      .update({
+        status: "approved",
+        mp_payment_id: String(paymentId),
+        mp_status_detail: statusDetail,
+      })
+      .eq("id", purchase.id);
+    return false;
+  }
 
   if (payment.status === "approved") {
     // Credits expire after the package's validity window (null = never).

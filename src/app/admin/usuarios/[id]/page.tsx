@@ -34,6 +34,7 @@ const REASONS: Record<string, string> = {
   subscription: "Suscripción",
   extension: "Vencimiento extendido",
   transfer_rejected: "Transferencia rechazada",
+  event_payment: "Clase especial pagada aparte",
 };
 
 export default async function UsuarioDetailPage({

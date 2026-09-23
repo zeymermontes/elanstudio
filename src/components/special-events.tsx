@@ -3,6 +3,7 @@ import { ArrowRight, Clock, User } from "lucide-react";
 import { cap, dateBadge, formatDayLabel, formatTime } from "@/lib/format";
 import { encodeRef } from "@/lib/schedule-ref";
 import { LocationChip } from "@/components/location-chip";
+import { SlotCost } from "@/components/slot-cost";
 import { slotBlockedLabel } from "@/lib/booking-rules";
 import type { ScheduleSlot } from "@/lib/types";
 
@@ -86,6 +87,7 @@ function EventCard({
             {full ? "Sin lugares" : `${e.spotsLeft} lugares`}
           </span>
         </div>
+        <SlotCost pricing={e.pricing} className="mt-2" />
       </div>
 
       <div className="shrink-0">

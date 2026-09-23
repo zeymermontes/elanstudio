@@ -15,7 +15,8 @@ type Method = "card" | "transfer";
  * automática de la página.
  */
 export function PaymentMethods({
-  packageId,
+  packageId = null,
+  eventId = null,
   packageName,
   amount,
   publicKey,
@@ -23,7 +24,9 @@ export function PaymentMethods({
   initialPromo,
   transferAccounts,
 }: {
-  packageId: string;
+  packageId?: string | null;
+  /** Clase especial que se paga aparte (0027), en vez de un paquete. */
+  eventId?: string | null;
   packageName: string;
   amount: number;
   publicKey: string;
@@ -66,6 +69,7 @@ export function PaymentMethods({
         <>
           <EmbeddedCheckout
             packageId={packageId}
+            eventId={eventId}
             packageName={packageName}
             amount={amount}
             publicKey={publicKey}
@@ -79,6 +83,7 @@ export function PaymentMethods({
       ) : (
         <TransferCheckout
           packageId={packageId}
+          eventId={eventId}
           packageName={packageName}
           amount={amount}
           accounts={transferAccounts}

@@ -112,6 +112,58 @@ export function SessionForm({
           </Field>
         </div>
 
+        {/* Costo. Una clase normal vale 1 clase y la cubre la mensualidad;
+            un taller o una masterclass puede valer más, venderse aparte o
+            quedar fuera del plan. */}
+        <fieldset className="rounded-2xl border border-line px-5 py-4">
+          <legend className="px-2 text-[0.7rem] uppercase tracking-luxe text-gold">
+            Costo de la clase
+          </legend>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Clases que descuenta">
+              <input
+                type="number"
+                name="credit_cost"
+                min={1}
+                step={1}
+                defaultValue={event?.pricing.creditCost ?? 1}
+                required
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Precio para pagarla aparte (MXN, opcional)">
+              <input
+                type="number"
+                name="price_mxn"
+                min={1}
+                step="0.01"
+                defaultValue={event?.pricing.priceMxn ?? ""}
+                placeholder="Solo con clases"
+                className={inputClass}
+              />
+            </Field>
+          </div>
+          <p className="mt-2 text-xs text-ink-soft/80">
+            Con precio, la alumna elige: gasta sus clases o la paga aparte con
+            tarjeta o transferencia.
+          </p>
+          <label className="mt-4 flex items-start gap-2.5 text-sm text-ink-soft">
+            <input
+              type="checkbox"
+              name="plan_included"
+              defaultChecked={event ? event.pricing.planIncluded : true}
+              className="mt-0.5 accent-pink"
+            />
+            <span>
+              La mensualidad ilimitada la incluye
+              <span className="mt-0.5 block text-xs text-ink-soft/80">
+                Sin marcar, a quien tiene mensualidad se le avisa que no se
+                incluye en su plan y la paga aparte o con clases de un paquete.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+
         <label className="flex items-start gap-2.5 text-sm text-ink-soft">
           <input
             type="checkbox"

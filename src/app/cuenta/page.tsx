@@ -9,7 +9,9 @@ import {
   ConfirmReserve,
   CancelBooking,
   CancelSubscription,
+  type ReserveCost,
 } from "@/components/account-actions";
+import { rowPricing } from "@/lib/data";
 import {
   canCancelBooking,
   CANCEL_WINDOW_NOTE,
@@ -117,7 +119,7 @@ export default async function CuentaPage({
       // clases y hay que decírselo con calma, no dejar que lo descubra sola.
       supabase
         .from("purchases")
-        .select("id, reviewed_at, packages(name)")
+        .select("id, reviewed_at, packages(name), class_sessions(class_types(name))")
         .eq("user_id", user.id)
         .eq("method", "transfer")
         .eq("status", "rejected")
@@ -193,18 +195,32 @@ export default async function CuentaPage({
   // here too late — book_session would refuse it, so say so before the click.
   let reservarLabel: string | null = null;
   let reservarBlocked: string | null = null;
+  // Solo para una clase especial (0027): qué descuenta, si se puede pagar
+  // aparte y si el plan la cubre, para que la alumna elija antes de confirmar.
+  let reservarCost: ReserveCost | null = null;
   const reserveRef = reservar ? decodeRef(reservar) : null;
   if (reserveRef?.kind === "session") {
     const { data: sess } = await supabase
       .from("class_sessions")
-      .select("starts_at, class_types(name), locations(utc_offset_minutes)")
+      .select(
+        "starts_at, credit_cost, price_mxn, plan_included, class_types(name), locations(utc_offset_minutes)",
+      )
       .eq("id", reserveRef.sessionId)
       .single();
     if (sess) {
       const raw = sess as unknown as {
         starts_at: string;
+        credit_cost: number | null;
+        price_mxn: number | string | null;
+        plan_included: boolean | null;
         class_types: { name: string } | { name: string }[] | null;
         locations: { utc_offset_minutes: number } | null;
+      };
+      reservarCost = {
+        sessionId: reserveRef.sessionId,
+        pricing: rowPricing(raw as unknown as Record<string, unknown>),
+        credits: (balance as number | null) ?? 0,
+        subActive,
       };
       const ct = Array.isArray(raw.class_types)
         ? raw.class_types[0]
@@ -306,7 +322,16 @@ export default async function CuentaPage({
         <RejectedTransfers
           names={rejectedTransfers.map((r) => {
             const p = r.packages as { name: string } | { name: string }[] | null;
-            return (Array.isArray(p) ? p[0]?.name : p?.name) ?? "tu paquete";
+            const pkgName = Array.isArray(p) ? p[0]?.name : p?.name;
+            if (pkgName) return pkgName;
+            // Un lugar pagado aparte: la clase, no un paquete.
+            const cs = r.class_sessions as
+              | { class_types: { name: string } | { name: string }[] | null }
+              | { class_types: { name: string } | { name: string }[] | null }[]
+              | null;
+            const one = Array.isArray(cs) ? cs[0] : cs;
+            const ct = one?.class_types;
+            return (Array.isArray(ct) ? ct[0]?.name : ct?.name) ?? "tu paquete";
           })}
           whatsapp={studio?.whatsapp ?? ""}
         />
@@ -339,6 +364,7 @@ export default async function CuentaPage({
           refStr={reservar}
           label={reservarLabel}
           blocked={reservarBlocked}
+          cost={reservarCost}
         />
       ) : null}
 
@@ -435,6 +461,18 @@ function PagoBanner({ status }: { status: string }) {
     },
     transferencia: {
       text: "¡Gracias! Recibimos tu comprobante y tus clases ya están disponibles.",
+      ok: true,
+    },
+    evento: {
+      text: "¡Pago recibido! Tu lugar en la clase especial ya está reservado.",
+      ok: true,
+    },
+    evento_pendiente: {
+      text: "Tu pago está pendiente de confirmación. En cuanto se apruebe, tu lugar queda reservado.",
+      ok: true,
+    },
+    evento_transferencia: {
+      text: "¡Gracias! Recibimos tu comprobante y tu lugar en la clase especial ya está reservado.",
       ok: true,
     },
     error: { text: "El pago no se completó. Intenta de nuevo.", ok: false },

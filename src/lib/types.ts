@@ -140,4 +140,20 @@ export type ScheduleSlot = {
   isEvent: boolean;
   /** One-off events only: announce it on the landing page. */
   featured: boolean;
+  /** What booking it takes — see SlotPricing. */
+  pricing: SlotPricing;
+};
+
+/**
+ * What a slot costs. A regular class is { creditCost: 1, priceMxn: null,
+ * planIncluded: true }; a special event can take more credits, be paid for
+ * separately (card or transfer), or be left out of the unlimited plan.
+ */
+export type SlotPricing = {
+  /** Credits the booking deducts from a package. */
+  creditCost: number;
+  /** Price to pay for it separately, in MXN. null = only bookable with credits. */
+  priceMxn: number | null;
+  /** Whether an active monthly subscription covers it. */
+  planIncluded: boolean;
 };

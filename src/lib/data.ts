@@ -25,6 +25,7 @@ import type {
   SessionView,
   WeeklyClass,
   ScheduleSlot,
+  SlotPricing,
 } from "./types";
 
 /** Brand/site settings from the DB, or defaults when not configured. */
@@ -281,6 +282,23 @@ export async function getWeeklyClasses(): Promise<WeeklyClass[]> {
  */
 export const EVENT_HORIZON_DAYS = 180;
 
+/** What a template class costs: one credit, covered by the plan. */
+export const REGULAR_PRICING: SlotPricing = {
+  creditCost: 1,
+  priceMxn: null,
+  planIncluded: true,
+};
+
+/** Pricing columns of a class_sessions row (0027). Defaults match the template. */
+export function rowPricing(s: Row): SlotPricing {
+  const price = s.price_mxn == null ? null : Number(s.price_mxn);
+  return {
+    creditCost: Math.max(1, Number(s.credit_cost ?? 1)),
+    priceMxn: price && price > 0 ? price : null,
+    planIncluded: s.plan_included == null ? true : Boolean(s.plan_included),
+  };
+}
+
 type SlotMaps = {
   ctById: Map<string, ClassType>;
   coachById: Map<string, Coach>;
@@ -313,6 +331,7 @@ function toEventSlot(
       DEFAULT_UTC_OFFSET_MIN,
     isEvent: true,
     featured: Boolean(s.featured),
+    pricing: rowPricing(s),
   };
 }
 
@@ -401,6 +420,7 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
             locById.get(s.locationId)?.utcOffsetMin ?? DEFAULT_UTC_OFFSET_MIN,
           isEvent: false,
           featured: false,
+          pricing: REGULAR_PRICING,
         };
       })
       .filter((s): s is ScheduleSlot => s !== null)
@@ -486,6 +506,7 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           utcOffsetMin: offsetMin,
           isEvent: false,
           featured: false,
+          pricing: REGULAR_PRICING,
         });
       } else {
         const endsAt = new Date(startsAt.getTime() + w.durationMin * 60000);
@@ -502,6 +523,7 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           utcOffsetMin: offsetMin,
           isEvent: false,
           featured: false,
+          pricing: REGULAR_PRICING,
         });
       }
     }

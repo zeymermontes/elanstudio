@@ -18,14 +18,22 @@ export type { CheckoutPromo };
  * and charges from its own calculation, never from anything sent by this form.
  */
 export function EmbeddedCheckout({
-  packageId,
+  packageId = null,
+  eventId = null,
   packageName,
   amount,
   publicKey,
   initialPromo = null,
   payerEmail = null,
 }: {
-  packageId: string;
+  /** Paquete que se compra. Excluyente con `eventId`. */
+  packageId?: string | null;
+  /**
+   * Clase especial cuyo lugar se paga aparte (0027). Sin promociones: el
+   * precio es el del evento tal cual. Al aprobarse, el servidor reserva el
+   * lugar en vez de acreditar clases.
+   */
+  eventId?: string | null;
   packageName?: string;
   /** List price of the package, before any discount. */
   amount: number;
@@ -47,6 +55,7 @@ export function EmbeddedCheckout({
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
 
   const total = promo?.finalMxn ?? amount;
+  const itemId = eventId ?? packageId ?? "";
 
   useEffect(() => {
     if (publicKey) {
@@ -69,15 +78,17 @@ export function EmbeddedCheckout({
 
   return (
     <div>
-      <PromoSection
-        packageId={packageId}
-        amount={amount}
-        initialPromo={initialPromo}
-        onChange={(p, c) => {
-          setPromo(p);
-          setAppliedCode(c);
-        }}
-      />
+      {packageId && !eventId ? (
+        <PromoSection
+          packageId={packageId}
+          amount={amount}
+          initialPromo={initialPromo}
+          onChange={(p, c) => {
+            setPromo(p);
+            setAppliedCode(c);
+          }}
+        />
+      ) : null}
 
       {error ? (
         <p className="mb-4 rounded-xl bg-pink-soft/60 px-4 py-3 text-sm text-pink-strong">
@@ -122,30 +133,36 @@ export function EmbeddedCheckout({
             // queda sin Purchase y así se ve dónde se cae el embudo.
             trackPixel(
               "InitiateCheckout",
-              packageParams({ id: packageId, name: packageName, valueMxn: total }),
+              packageParams({ id: itemId, name: packageName, valueMxn: total }),
             );
             const res = await fetch("/api/mp/process", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ packageId, formData, promoCode: appliedCode }),
+              body: JSON.stringify(
+                eventId
+                  ? { sessionId: eventId, formData }
+                  : { packageId, formData, promoCode: appliedCode },
+              ),
             });
             const data = await res.json();
             if (data.status === "approved") {
               trackPixel(
                 "Purchase",
                 packageParams({
-                  id: packageId,
+                  id: itemId,
                   name: packageName,
                   valueMxn: Number(data.amountMxn) || total,
                 }),
                 data.purchaseId,
               );
-              router.push("/cuenta?pago=ok");
+              router.push(eventId ? "/cuenta?pago=evento" : "/cuenta?pago=ok");
             } else if (
               data.status === "in_process" ||
               data.status === "pending"
             ) {
-              router.push("/cuenta?pago=pendiente");
+              router.push(
+                eventId ? "/cuenta?pago=evento_pendiente" : "/cuenta?pago=pendiente",
+              );
             } else {
               // The server reads Mercado Pago's status_detail and hands us a
               // message the member can act on. A wrong security code, a card

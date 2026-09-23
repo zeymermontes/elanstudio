@@ -7,6 +7,22 @@ import { bookingMessage } from "@/lib/booking-messages";
 import { CANCEL_WINDOW_NOTE } from "@/lib/booking-rules";
 import { cancelSubscriptionAction } from "@/lib/actions/subscription";
 import { trackPixel } from "@/lib/pixel";
+import Link from "next/link";
+import { formatMxn } from "@/lib/format";
+import { creditsLabel, isSpecialPricing, NOT_IN_PLAN_NOTE } from "@/lib/slot-cost";
+import type { SlotPricing } from "@/lib/types";
+
+/**
+ * What a special class asks of this member (0027): its pricing, how many
+ * credits she has and whether her monthly plan is active — enough to offer
+ * "use your credits" and "pay separately" side by side.
+ */
+export type ReserveCost = {
+  sessionId: string;
+  pricing: SlotPricing;
+  credits: number;
+  subActive: boolean;
+};
 
 /**
  * Confirmation card shown when arriving at /cuenta?reservar=<ref>.
@@ -20,14 +36,26 @@ export function ConfirmReserve({
   refStr,
   label,
   blocked,
+  cost = null,
 }: {
   refStr: string;
   label: string;
   blocked?: string | null;
+  cost?: ReserveCost | null;
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const router = useRouter();
+
+  // Clase especial: decidir aquí qué botones ofrecer, con la misma regla que
+  // book_session aplica después (la mensualidad solo cubre lo incluido).
+  const special = cost !== null && isSpecialPricing(cost.pricing);
+  const coveredByPlan = !!cost && cost.subActive && cost.pricing.planIncluded;
+  const canUseCredits =
+    !cost || coveredByPlan || cost.credits >= cost.pricing.creditCost;
+  const payHref = cost?.pricing.priceMxn
+    ? `/comprar/evento/${cost.sessionId}`
+    : null;
 
   function confirm() {
     start(async () => {
@@ -52,16 +80,62 @@ export function ConfirmReserve({
         </p>
       ) : (
         <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-          <p className="text-sm text-ink">
-            Confirmar reserva: <span className="font-medium">{label}</span>
-          </p>
-          <button
-            onClick={confirm}
-            disabled={pending}
-            className="rounded-full bg-pink px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-white shadow-soft transition-colors hover:bg-pink-strong disabled:opacity-60"
-          >
-            {pending ? "Confirmando…" : "Confirmar"}
-          </button>
+          <div>
+            <p className="text-sm text-ink">
+              Confirmar reserva: <span className="font-medium">{label}</span>
+            </p>
+            {special && cost ? (
+              <p className="mt-1 text-xs text-ink-soft">
+                {coveredByPlan
+                  ? "Incluida en tu plan mensual."
+                  : `Esta clase especial descuenta ${creditsLabel(cost.pricing.creditCost)}${
+                      cost.credits >= cost.pricing.creditCost
+                        ? ` · tienes ${creditsLabel(cost.credits)}`
+                        : cost.credits > 0
+                          ? ` · solo tienes ${creditsLabel(cost.credits)}`
+                          : " · no tienes clases disponibles"
+                    }.`}
+                {cost.subActive && !cost.pricing.planIncluded ? (
+                  <span className="text-pink-strong"> {NOT_IN_PLAN_NOTE}.</span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canUseCredits ? (
+              <button
+                onClick={confirm}
+                disabled={pending}
+                className="rounded-full bg-pink px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-white shadow-soft transition-colors hover:bg-pink-strong disabled:opacity-60"
+              >
+                {pending
+                  ? "Confirmando…"
+                  : special && cost && !coveredByPlan
+                    ? `Usar ${creditsLabel(cost.pricing.creditCost)}`
+                    : "Confirmar"}
+              </button>
+            ) : null}
+            {payHref && cost?.pricing.priceMxn ? (
+              <Link
+                href={payHref}
+                className={`rounded-full px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] shadow-soft transition-colors ${
+                  canUseCredits
+                    ? "border border-gold/50 text-ink hover:border-gold hover:text-pink-strong"
+                    : "bg-pink text-white hover:bg-pink-strong"
+                }`}
+              >
+                Pagar {formatMxn(cost.pricing.priceMxn)} aparte
+              </Link>
+            ) : null}
+            {!canUseCredits && !payHref ? (
+              <Link
+                href="/paquetes"
+                className="rounded-full bg-pink px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-white shadow-soft transition-colors hover:bg-pink-strong"
+              >
+                Comprar paquete
+              </Link>
+            ) : null}
+          </div>
         </div>
       )}
     </div>

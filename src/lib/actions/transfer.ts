@@ -6,7 +6,13 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { resolvePromotion } from "@/lib/promotions";
 import { resolveStock } from "@/lib/stock";
 import { RECEIPTS_BUCKET } from "@/lib/receipts";
+import {
+  loadPayableEvent,
+  bookPaidSeat,
+  PAYABLE_EVENT_MESSAGES,
+} from "@/lib/event-checkout";
 import type { Package } from "@/lib/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type TransferResult = {
   ok: boolean;
@@ -54,19 +60,9 @@ export async function submitTransferAction(input: {
     return { ok: false, error: "El pago por transferencia no está disponible." };
   }
 
-  // El comprobante debe ser de esta alumna y existir de verdad: la política
-  // del bucket solo la deja subir a su carpeta, y la URL firmada falla si el
-  // archivo no está.
-  const receiptPath = input.receiptPath.trim();
-  if (!receiptPath.startsWith(`${user.id}/`)) {
-    return { ok: false, error: "Vuelve a subir tu comprobante." };
-  }
-  const { error: receiptError } = await admin.storage
-    .from(RECEIPTS_BUCKET)
-    .createSignedUrl(receiptPath, 60);
-  if (receiptError) {
-    return { ok: false, error: "No encontramos tu comprobante. Súbelo de nuevo." };
-  }
+  const receipt = await checkReceipt(admin, user.id, input.receiptPath);
+  if (!receipt.ok) return receipt;
+  const receiptPath = receipt.path;
 
   const { data: pkg } = await admin
     .from("packages")
@@ -155,6 +151,90 @@ export async function submitTransferAction(input: {
   return { ok: true, purchaseId: purchase.id, amountMxn: chargeMxn };
 }
 
+/**
+ * El comprobante debe ser de esta alumna y existir de verdad: la política
+ * del bucket solo la deja subir a su carpeta, y la URL firmada falla si el
+ * archivo no está.
+ */
+async function checkReceipt(
+  admin: SupabaseClient,
+  userId: string,
+  rawPath: string,
+): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+  const path = rawPath.trim();
+  if (!path.startsWith(`${userId}/`)) {
+    return { ok: false, error: "Vuelve a subir tu comprobante." };
+  }
+  const { error } = await admin.storage
+    .from(RECEIPTS_BUCKET)
+    .createSignedUrl(path, 60);
+  if (error) {
+    return { ok: false, error: "No encontramos tu comprobante. Súbelo de nuevo." };
+  }
+  return { ok: true, path };
+}
+
+/**
+ * Transferencia por el lugar de una clase especial (0027). Como con un
+ * paquete, confiamos en la alumna: el lugar se reserva al momento y el admin
+ * revisa después. Rechazarla cancela la reserva (reviewTransferAction).
+ */
+export async function submitEventTransferAction(input: {
+  sessionId: string;
+  receiptPath: string;
+}): Promise<TransferResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Inicia sesión para continuar." };
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) return { ok: false, error: NOT_CONFIGURED };
+
+  const { data: settings } = await admin
+    .from("site_settings")
+    .select("transfer_enabled")
+    .eq("id", 1)
+    .maybeSingle();
+  if (!settings?.transfer_enabled) {
+    return { ok: false, error: "El pago por transferencia no está disponible." };
+  }
+
+  const receipt = await checkReceipt(admin, user.id, input.receiptPath);
+  if (!receipt.ok) return receipt;
+
+  const loaded = await loadPayableEvent(admin, input.sessionId, user.id);
+  if (!loaded.ok) return { ok: false, error: PAYABLE_EVENT_MESSAGES[loaded.code] };
+  const event = loaded.event;
+
+  const { data: purchase, error: insertError } = await admin
+    .from("purchases")
+    .insert({
+      user_id: user.id,
+      package_id: null,
+      session_id: event.id,
+      amount_mxn: event.pricing.priceMxn,
+      credits: 0,
+      status: "approved",
+      method: "transfer",
+      receipt_path: receipt.path,
+    })
+    .select("id")
+    .single();
+  if (!purchase) {
+    console.error("[transfer] event purchase insert failed", insertError?.message);
+    return { ok: false, error: "No se pudo registrar tu pago. Intenta de nuevo." };
+  }
+
+  if (!(await bookPaidSeat(admin, user.id, event.id))) {
+    await admin.from("purchases").delete().eq("id", purchase.id);
+    return { ok: false, error: "No se pudo reservar tu lugar. Intenta de nuevo." };
+  }
+
+  revalidatePath("/cuenta");
+  revalidatePath("/horarios");
+  revalidatePath("/admin", "layout"); // el contador del menú
+  return { ok: true, purchaseId: purchase.id, amountMxn: event.pricing.priceMxn };
+}
+
 export type TransferDecision = "approve" | "reject";
 
 /**
@@ -173,13 +253,32 @@ export async function reviewTransferAction(
 
   const { data: purchase } = await admin
     .from("purchases")
-    .select("id, user_id, credits, status, method, packages(validity_days)")
+    .select("id, user_id, credits, status, method, session_id, packages(validity_days)")
     .eq("id", purchaseId)
     .eq("method", "transfer")
     .maybeSingle();
   if (!purchase) return { ok: false, error: "No encontramos esa transferencia." };
 
-  if (decision === "reject") {
+  if (purchase.session_id) {
+    // Lugar en una clase especial (0027): no hay clases que retirar o
+    // devolver, es la reserva la que se cancela o se recupera. Sin
+    // devolución de créditos al cancelar — nunca se gastaron.
+    if (decision === "reject") {
+      const { error } = await admin
+        .from("bookings")
+        .update({ status: "cancelled" })
+        .eq("user_id", purchase.user_id)
+        .eq("session_id", purchase.session_id)
+        .eq("status", "confirmed");
+      if (error) return { ok: false, error: error.message };
+    } else if (!(await bookPaidSeat(admin, purchase.user_id, purchase.session_id))) {
+      return {
+        ok: false,
+        error: "La clase ya no está programada; no se pudo recuperar el lugar.",
+      };
+    }
+    revalidatePath("/horarios");
+  } else if (decision === "reject") {
     // Un solo asiento de retiro por compra, aunque se pulse dos veces.
     const { count } = await admin
       .from("credit_ledger")

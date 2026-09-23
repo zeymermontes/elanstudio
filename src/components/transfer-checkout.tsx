@@ -4,7 +4,10 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Landmark, Upload, Check, Loader2 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { submitTransferAction } from "@/lib/actions/transfer";
+import {
+  submitTransferAction,
+  submitEventTransferAction,
+} from "@/lib/actions/transfer";
 import { RECEIPTS_BUCKET } from "@/lib/receipts";
 import { formatMxn } from "@/lib/format";
 import { PromoSection, type CheckoutPromo } from "@/components/promo-section";
@@ -21,13 +24,17 @@ import { trackPixel, packageParams } from "@/lib/pixel";
  * la acción del servidor solo recibe la ruta.
  */
 export function TransferCheckout({
-  packageId,
+  packageId = null,
+  eventId = null,
   packageName,
   amount,
   accounts,
   initialPromo = null,
 }: {
-  packageId: string;
+  /** Paquete que se compra. Excluyente con `eventId`. */
+  packageId?: string | null;
+  /** Clase especial cuyo lugar se paga aparte (0027). Sin promociones. */
+  eventId?: string | null;
   packageName?: string;
   /** Precio de lista, antes de descuentos. */
   amount: number;
@@ -46,6 +53,7 @@ export function TransferCheckout({
   const checkoutTracked = useRef(false);
 
   const total = promo?.finalMxn ?? amount;
+  const itemId = eventId ?? packageId ?? "";
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -58,7 +66,7 @@ export function TransferCheckout({
       checkoutTracked.current = true;
       trackPixel(
         "InitiateCheckout",
-        packageParams({ id: packageId, name: packageName, valueMxn: total }),
+        packageParams({ id: itemId, name: packageName, valueMxn: total }),
       );
     }
 
@@ -97,39 +105,45 @@ export function TransferCheckout({
     if (!receiptPath) return;
     setError(null);
     startTransition(async () => {
-      const res = await submitTransferAction({
-        packageId,
-        receiptPath,
-        promoCode: appliedCode,
-      });
+      const res = eventId
+        ? await submitEventTransferAction({ sessionId: eventId, receiptPath })
+        : await submitTransferAction({
+            packageId: packageId ?? "",
+            receiptPath,
+            promoCode: appliedCode,
+          });
       if (res.ok) {
         // Cuenta como compra desde ya: las clases se acreditan al momento y
         // el rechazo posterior es la excepción.
         trackPixel(
           "Purchase",
           packageParams({
-            id: packageId,
+            id: itemId,
             name: packageName,
             valueMxn: res.amountMxn ?? total,
           }),
           res.purchaseId,
         );
-        router.push("/cuenta?pago=transferencia");
+        router.push(
+          eventId ? "/cuenta?pago=evento_transferencia" : "/cuenta?pago=transferencia",
+        );
       } else setError(res.error ?? "No se pudo registrar tu pago.");
     });
   }
 
   return (
     <div>
-      <PromoSection
-        packageId={packageId}
-        amount={amount}
-        initialPromo={initialPromo}
-        onChange={(p, c) => {
-          setPromo(p);
-          setAppliedCode(c);
-        }}
-      />
+      {packageId && !eventId ? (
+        <PromoSection
+          packageId={packageId}
+          amount={amount}
+          initialPromo={initialPromo}
+          onChange={(p, c) => {
+            setPromo(p);
+            setAppliedCode(c);
+          }}
+        />
+      ) : null}
 
       {/* Cuentas */}
       <div className="rounded-xl border border-gold/40 bg-gold-soft/20 px-5 py-4">
@@ -202,8 +216,9 @@ export function TransferCheckout({
         )}
       </button>
       <p className="mt-3 text-center text-xs text-ink-soft">
-        Tus clases quedan disponibles al momento. Revisamos la transferencia y
-        te avisamos solo si algo no cuadra.
+        {eventId
+          ? "Tu lugar queda reservado al momento. Revisamos la transferencia y te avisamos solo si algo no cuadra."
+          : "Tus clases quedan disponibles al momento. Revisamos la transferencia y te avisamos solo si algo no cuadra."}
       </p>
     </div>
   );

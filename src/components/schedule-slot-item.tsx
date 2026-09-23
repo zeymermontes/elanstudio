@@ -6,6 +6,7 @@ import { Clock, User, X, Signal, ArrowRight } from "lucide-react";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
 import { ReserveButton } from "@/components/reserve-button";
 import { LocationChip } from "@/components/location-chip";
+import { SlotCost } from "@/components/slot-cost";
 import { BOOKING_WINDOW_NOTE } from "@/lib/booking-rules";
 import type { ScheduleSlot } from "@/lib/types";
 
@@ -65,6 +66,7 @@ export function ScheduleSlotItem({
               ) : null}
               {slot.location ? <LocationChip location={slot.location} /> : null}
             </div>
+            <SlotCost pricing={slot.pricing} className="mt-2" />
           </div>
         </div>
 
@@ -157,6 +159,8 @@ function Modal({
             />
           ) : null}
         </div>
+
+        <SlotCost pricing={slot.pricing} className="mt-4" />
 
         {slot.classType.description ? (
           <p className="mt-5 text-sm leading-relaxed text-ink-soft">

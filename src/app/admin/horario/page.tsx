@@ -15,6 +15,7 @@ import { Tabs } from "@/components/admin/tabs";
 import { encodeRef } from "@/lib/schedule-ref";
 import { formatDayLabel, formatTime, dayKey, cap } from "@/lib/format";
 import type { ScheduleSlot } from "@/lib/types";
+import { pricingBadges, NOT_IN_PLAN_NOTE } from "@/lib/slot-cost";
 
 export const dynamic = "force-dynamic";
 
@@ -164,6 +165,10 @@ export default async function AdminHorarioPage() {
                   {cap(formatDayLabel(e.startsAt, e.utcOffsetMin))} ·{" "}
                   {formatTime(e.startsAt, e.utcOffsetMin)} · {e.booked}/
                   {e.capacity} reservas
+                  {pricingBadges(e.pricing).length
+                    ? ` · ${pricingBadges(e.pricing).join(" ")}`
+                    : ""}
+                  {!e.pricing.planIncluded ? ` · ${NOT_IN_PLAN_NOTE}` : ""}
                 </p>
                 <SessionForm
                   event={e}

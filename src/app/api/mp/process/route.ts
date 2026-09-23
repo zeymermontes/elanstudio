@@ -6,7 +6,13 @@ import { mpClient } from "@/lib/mercadopago";
 import { resolvePromotion } from "@/lib/promotions";
 import { resolveStock } from "@/lib/stock";
 import { paymentRejectionMessage } from "@/lib/mp-errors";
+import {
+  loadPayableEvent,
+  bookPaidSeat,
+  PAYABLE_EVENT_MESSAGES,
+} from "@/lib/event-checkout";
 import type { Package } from "@/lib/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Processes an embedded (Bricks) one-time card payment. Receives the tokenized
@@ -27,9 +33,23 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const packageId: string | undefined = body?.packageId;
+  const sessionId: string | undefined = body?.sessionId;
   const promoCode: string | null = body?.promoCode ?? null;
   const formData = body?.formData;
-  if (!packageId || !formData?.token) {
+  if ((!packageId && !sessionId) || !formData?.token) {
+    return NextResponse.json({ error: "bad_request" }, { status: 400 });
+  }
+
+  // Lugar en una clase especial pagado aparte (0027): otro camino, mismo cobro.
+  if (sessionId) {
+    return processEventPayment(admin, client, {
+      userId: user.id,
+      email: user.email ?? "",
+      sessionId,
+      formData,
+    });
+  }
+  if (!packageId) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
@@ -217,6 +237,133 @@ export async function POST(req: NextRequest) {
 }
 
 /**
+ * Cobra el lugar de una clase especial y, si se aprueba, lo reserva. No
+ * acredita clases: la fila de purchases lleva session_id y credits = 0.
+ *
+ * Se revisa cupo y ventana ANTES de cobrar. Si alguien toma el último lugar
+ * en el instante entre esa revisión y la reserva, book_paid_session la deja
+ * pasar de todos modos: un lugar de más es mejor que un cobro sin clase.
+ */
+async function processEventPayment(
+  admin: SupabaseClient,
+  client: NonNullable<ReturnType<typeof mpClient>>,
+  {
+    userId,
+    email,
+    sessionId,
+    formData,
+  }: {
+    userId: string;
+    email: string;
+    sessionId: string;
+    formData: {
+      token: string;
+      payment_method_id?: string;
+      issuer_id?: number;
+      installments?: number | string;
+      payer?: { email?: string };
+    };
+  },
+) {
+  const loaded = await loadPayableEvent(admin, sessionId, userId);
+  if (!loaded.ok) {
+    return NextResponse.json(
+      { error: loaded.code, message: PAYABLE_EVENT_MESSAGES[loaded.code] },
+      { status: 400 },
+    );
+  }
+  const event = loaded.event;
+  const chargeMxn = event.pricing.priceMxn;
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("full_name, phone")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const { data: purchase } = await admin
+    .from("purchases")
+    .insert({
+      user_id: userId,
+      package_id: null,
+      session_id: event.id,
+      amount_mxn: chargeMxn,
+      credits: 0,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+  if (!purchase) return NextResponse.json({ error: "error" }, { status: 500 });
+
+  try {
+    const payment = await new Payment(client).create({
+      body: {
+        transaction_amount: chargeMxn,
+        token: formData.token,
+        payment_method_id: formData.payment_method_id,
+        issuer_id: formData.issuer_id,
+        installments: Number(formData.installments) || 1,
+        description: `${event.name} · ÉLANSTUDIO`,
+        payer: { email: formData.payer?.email ?? email },
+        external_reference: purchase.id,
+        metadata: { purchase_id: purchase.id, user_id: userId, session_id: event.id },
+        additional_info: buildAdditionalInfo({
+          pkg: { id: event.id, name: event.name },
+          chargeMxn,
+          fullName: profile?.full_name ?? "",
+          phone: profile?.phone ?? "",
+          description: "Clase especial · ÉLANSTUDIO",
+        }),
+      },
+      requestOptions: { idempotencyKey: idempotencyKey(userId, formData.token) },
+    });
+
+    const status = payment.status ?? "rejected";
+    const statusDetail = payment.status_detail ?? null;
+    let dbStatus =
+      status === "approved"
+        ? "approved"
+        : status === "in_process" || status === "pending"
+          ? "pending"
+          : "rejected";
+
+    // Reservar ANTES de aprobar, por la misma razón que con las clases: el
+    // webhook no vuelve a tocar una compra ya aprobada.
+    if (status === "approved" && !(await bookPaidSeat(admin, userId, event.id))) {
+      dbStatus = "pending";
+    }
+
+    await admin
+      .from("purchases")
+      .update({
+        status: dbStatus,
+        mp_payment_id: String(payment.id),
+        mp_status_detail: statusDetail,
+      })
+      .eq("id", purchase.id);
+
+    return NextResponse.json({
+      status: dbStatus,
+      statusDetail,
+      message:
+        dbStatus === "rejected" ? paymentRejectionMessage(statusDetail) : null,
+      purchaseId: purchase.id,
+      amountMxn: chargeMxn,
+    });
+  } catch (err) {
+    console.error("[mp/process] event payment failed", purchase.id, err);
+    await admin
+      .from("purchases")
+      .update({ status: "rejected" })
+      .eq("id", purchase.id);
+    return NextResponse.json(
+      { error: "payment_failed", message: paymentRejectionMessage(null) },
+      { status: 400 },
+    );
+  }
+}
+
+/**
  * Idempotency key for the charge.
  *
  * Keyed on the card token, not the purchase: the token is single-use and the
@@ -249,11 +396,13 @@ function buildAdditionalInfo({
   chargeMxn,
   fullName,
   phone,
+  description = "Paquete de clases · ÉLANSTUDIO",
 }: {
   pkg: { id: string; name: string };
   chargeMxn: number;
   fullName: string;
   phone: string;
+  description?: string;
 }) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   const firstName = parts[0];
@@ -265,7 +414,7 @@ function buildAdditionalInfo({
       {
         id: pkg.id,
         title: pkg.name,
-        description: `Paquete de clases · ÉLANSTUDIO`,
+        description,
         category_id: "services",
         quantity: 1,
         unit_price: chargeMxn,

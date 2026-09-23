@@ -24,11 +24,26 @@ type Row = {
   mp_status_detail: string | null;
   created_at: string;
   packages: { name: string } | { name: string }[] | null;
+  class_sessions: EventRel | EventRel[] | null;
 };
 
-function pkgName(p: Row["packages"]): string {
-  if (!p) return "—";
-  return Array.isArray(p) ? (p[0]?.name ?? "—") : p.name;
+type EventRel = {
+  starts_at: string;
+  class_types: { name: string } | { name: string }[] | null;
+};
+
+function one<T>(v: T | T[] | null): T | null {
+  return Array.isArray(v) ? (v[0] ?? null) : v;
+}
+
+/** Qué se pagó: el paquete, o la clase especial cuyo lugar se compró aparte. */
+function itemName(r: Row, offset: number): string {
+  const pkg = one(r.packages);
+  if (pkg) return pkg.name;
+  const ev = one(r.class_sessions);
+  if (!ev) return "—";
+  const ct = one(ev.class_types);
+  return `${ct?.name ?? "Clase especial"} · ${cap(formatDayLabel(ev.starts_at, offset))}`;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -54,7 +69,7 @@ export default async function AdminPagosPage() {
     const { data } = await supabase
       .from("purchases")
       .select(
-        "id, user_id, amount_mxn, credits, status, method, receipt_path, reviewed_at, mp_status_detail, created_at, packages(name)",
+        "id, user_id, amount_mxn, credits, status, method, receipt_path, reviewed_at, mp_status_detail, created_at, packages(name), class_sessions(starts_at, class_types(name))",
       )
       .order("created_at", { ascending: false })
       .limit(100);
@@ -95,8 +110,8 @@ export default async function AdminPagosPage() {
         <PaymentsRealtime />
       </div>
       <p className="mt-1 mb-8 text-sm text-ink-soft">
-        Compras de paquetes con tarjeta (Mercado Pago) y por transferencia. La
-        lista se actualiza en vivo.
+        Compras de paquetes y lugares en clases especiales, con tarjeta
+        (Mercado Pago) y por transferencia. La lista se actualiza en vivo.
       </p>
 
       {/* ---------- Transferencias por revisar ---------- */}
@@ -110,8 +125,9 @@ export default async function AdminPagosPage() {
             </span>
           </h2>
           <p className="mb-4 text-xs text-ink-soft">
-            Las clases ya están acreditadas. Abre el comprobante, compara con tu
-            cuenta y confirma. Si no llegó, recházala y se le retiran.
+            Las clases (o el lugar en la clase especial) ya están acreditadas.
+            Abre el comprobante, compara con tu cuenta y confirma. Si no llegó,
+            recházala y se le retiran.
           </p>
           <div className="space-y-3">
             {toReview.map((r) => (
@@ -124,7 +140,7 @@ export default async function AdminPagosPage() {
                     {names.get(r.user_id) ?? "—"}
                   </p>
                   <p className="mt-1 text-sm text-ink-soft">
-                    {pkgName(r.packages)} ·{" "}
+                    {itemName(r, offset)} ·{" "}
                     <span className="text-ink">{formatMxn(Number(r.amount_mxn))}</span>
                   </p>
                   <p className="mt-0.5 text-xs text-ink-soft">{when(r.created_at)}</p>
@@ -157,7 +173,7 @@ export default async function AdminPagosPage() {
               <thead className="border-b border-line text-[0.65rem] uppercase tracking-[0.12em] text-ink-soft">
                 <tr>
                   <th className="px-5 py-3">Miembro</th>
-                  <th className="px-5 py-3">Paquete</th>
+                  <th className="px-5 py-3">Concepto</th>
                   <th className="px-5 py-3">Monto</th>
                   <th className="px-5 py-3">Método</th>
                   <th className="px-5 py-3">Estado</th>
@@ -172,7 +188,7 @@ export default async function AdminPagosPage() {
                         {names.get(r.user_id) ?? "—"}
                         <p className="mt-0.5 text-xs text-ink-soft">{when(r.created_at)}</p>
                       </td>
-                      <td className="px-5 py-3 text-ink-soft">{pkgName(r.packages)}</td>
+                      <td className="px-5 py-3 text-ink-soft">{itemName(r, offset)}</td>
                       <td className="px-5 py-3 text-ink-soft">
                         {formatMxn(Number(r.amount_mxn))}
                       </td>

@@ -9,6 +9,10 @@ const MESSAGES: Record<string, string> = {
   ok: "¡Reserva confirmada!",
   full: "Esta clase ya está llena.",
   no_credits: "No tienes clases disponibles. Compra un paquete.",
+  not_enough:
+    "Esta clase especial descuenta más de una clase y no te alcanzan las que tienes. Compra un paquete o págala aparte.",
+  not_in_plan:
+    "Esta clase no se incluye en tu plan mensual. Puedes pagarla aparte o con clases de un paquete.",
   already: "Ya tienes una reserva para esta clase.",
   closed: "Esta clase ya no está disponible.",
   too_late: `Ya pasó el tiempo para cancelar esta clase. ${CANCEL_WINDOW_NOTE}`,

@@ -383,6 +383,15 @@ export async function saveSessionAction(
   const ends = new Date(starts.getTime() + duration * 60000);
   const capacity = num(fd, "capacity") || ct?.default_capacity || 10;
 
+  // Costo (0027). Una clase normal: 1 clase, sin precio, incluida en el plan.
+  const creditCost = Math.floor(num(fd, "credit_cost")) || 1;
+  if (creditCost < 1)
+    return { error: "La clase tiene que descontar al menos 1 clase." };
+  const priceRaw = str(fd, "price_mxn");
+  const priceMxn = priceRaw ? Math.round(Number(priceRaw) * 100) / 100 : null;
+  if (priceMxn !== null && !(priceMxn > 0))
+    return { error: "El precio aparte debe ser mayor a cero, o déjalo vacío." };
+
   const row = {
     class_type_id: classTypeId,
     coach_id: str(fd, "coach_id") || null,
@@ -391,6 +400,9 @@ export async function saveSessionAction(
     ends_at: ends.toISOString(),
     capacity,
     featured: fd.get("featured") === "on",
+    credit_cost: creditCost,
+    price_mxn: priceMxn,
+    plan_included: fd.get("plan_included") === "on",
   };
 
   // El filtro por weekly_class_id null es un cinturón de seguridad: este
