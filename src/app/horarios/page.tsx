@@ -3,6 +3,7 @@ import { Sun, Sunset } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs } from "@/components/admin/tabs";
 import { getSchedule, getSpecialEvents, getSettings } from "@/lib/data";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import {
@@ -136,6 +137,23 @@ export default async function HorariosPage({
     getSettings(),
   ]);
 
+  // Aviso de clase muestra: a quien no ha entrado se le invita a crear su
+  // cuenta; a quien ya entró solo si le aplica (nunca ha tenido clases).
+  // Quien ya tiene paquete, mensualidad o tomó clases no lo ve.
+  let trialBanner: "signup" | "book" | null = settings.trialClassEnabled
+    ? "signup"
+    : null;
+  if (trialBanner) {
+    const supabase = await createSupabaseServerClient();
+    const user = supabase ? (await supabase.auth.getUser()).data.user : null;
+    if (user && supabase) {
+      const { data: eligible } = await supabase.rpc("trial_eligible", {
+        p_user: user.id,
+      });
+      trialBanner = eligible ? "book" : null;
+    }
+  }
+
   // Server component (force-dynamic): reading the current time is intentional.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
@@ -209,7 +227,7 @@ export default async function HorariosPage({
       />
 
       <div className="mx-auto max-w-4xl px-5">
-        {settings.trialClassEnabled ? (
+        {trialBanner ? (
           <div className="mb-10 flex flex-col items-start gap-3 rounded-2xl border border-gold/40 bg-gold-soft/20 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="flex items-start gap-2.5 text-sm text-ink">
               <Sparkles
@@ -219,16 +237,20 @@ export default async function HorariosPage({
               />
               <span>
                 <span className="font-medium">¿Primera vez en ÉLAN?</span> Tu
-                primera clase es de muestra, sin costo. Crea tu cuenta, elige
-                una clase y reserva.
+                primera clase es de muestra, sin costo.{" "}
+                {trialBanner === "signup"
+                  ? "Crea tu cuenta, elige una clase y reserva."
+                  : "Elige una clase y reserva."}
               </span>
             </p>
-            <Link
-              href="/registro"
-              className="shrink-0 rounded-full border border-gold/50 px-5 py-2 text-[0.7rem] uppercase tracking-[0.15em] text-ink transition-colors hover:border-gold hover:text-pink-strong"
-            >
-              Crear mi cuenta
-            </Link>
+            {trialBanner === "signup" ? (
+              <Link
+                href="/registro"
+                className="shrink-0 rounded-full border border-gold/50 px-5 py-2 text-[0.7rem] uppercase tracking-[0.15em] text-ink transition-colors hover:border-gold hover:text-pink-strong"
+              >
+                Crear mi cuenta
+              </Link>
+            ) : null}
           </div>
         ) : null}
         {dayTabs.length === 0 ? (
