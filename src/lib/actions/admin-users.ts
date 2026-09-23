@@ -284,3 +284,32 @@ export async function cancelUserSubscriptionAction(
   revalidatePath("/admin/usuarios");
   return { ok: true };
 }
+
+/**
+ * Cancelar la reserva de una alumna desde el panel, sin la ventana de 12 h
+ * que aplica cuando cancela ella. Devuelve lo que gastó (admin_cancel_booking,
+ * 0029): las clases con su vencimiento, o nada si pagó el lugar aparte.
+ */
+export async function adminCancelBookingAction(
+  sessionId: string,
+  userId: string,
+): Promise<FormState> {
+  if (!(await ensureAdmin())) return { error: "No autorizado." };
+  const admin = createSupabaseAdminClient();
+  if (!admin) return { error: NOT_CONFIGURED };
+
+  const { data, error } = await admin.rpc("admin_cancel_booking", {
+    p_user: userId,
+    p_session: sessionId,
+  });
+  if (error) return { error: error.message };
+  if (data !== "ok") return { error: "Esa reserva ya no está activa." };
+
+  revalidatePath(`/admin/horario/${sessionId}`);
+  revalidatePath("/admin/horario");
+  revalidatePath(`/admin/usuarios/${userId}`);
+  revalidatePath("/horarios");
+  revalidatePath("/cuenta");
+  revalidatePath("/");
+  return { ok: true };
+}

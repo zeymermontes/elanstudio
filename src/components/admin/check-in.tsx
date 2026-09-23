@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check, X } from "lucide-react";
 import { setAttendanceAction } from "@/lib/actions/admin";
+import { CancelBookingButton } from "./cancel-booking-button";
 
 /**
  * One member row in a session roster with present/absent check-in. Optimistic:
@@ -15,12 +16,15 @@ export function CheckInRow({
   name,
   email,
   attended,
+  canCancel = false,
 }: {
   sessionId: string;
   userId: string;
   name: string;
   email: string;
   attended: boolean | null;
+  /** Solo el admin cancela por una alumna; la coach solo pasa lista. */
+  canCancel?: boolean;
 }) {
   const [state, setState] = useState<boolean | null>(attended);
   const [pending, start] = useTransition();
@@ -40,6 +44,15 @@ export function CheckInRow({
         <p className="truncate text-sm text-ink">{name || email || "Miembro"}</p>
         {name && email ? (
           <p className="truncate text-xs text-ink-soft">{email}</p>
+        ) : null}
+        {canCancel ? (
+          <div className="mt-1.5">
+            <CancelBookingButton
+              sessionId={sessionId}
+              userId={userId}
+              who={name || email || "esta alumna"}
+            />
+          </div>
         ) : null}
       </div>
       <div className="flex shrink-0 gap-2">

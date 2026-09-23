@@ -5,6 +5,7 @@ import { getMemberDetail } from "@/lib/admin-data";
 import { getStudioUtcOffset } from "@/lib/data";
 import { formatDayLabel, formatCivilDate, formatTime, cap } from "@/lib/format";
 import { requireAdmin } from "@/lib/auth";
+import { CancelBookingButton } from "@/components/admin/cancel-booking-button";
 import {
   AdjustCreditsForm,
   ExtendExpiryForm,
@@ -223,11 +224,18 @@ export default async function UsuarioDetailPage({
                 className="surface-card flex items-center justify-between rounded-xl px-5 py-3 text-sm shadow-soft"
               >
                 <span className="text-ink">{b.className}</span>
-                <span className="text-ink-soft">
-                  {b.startsAt
-                    ? `${cap(formatDayLabel(b.startsAt, b.utcOffsetMin))} · ${formatTime(b.startsAt, b.utcOffsetMin)}`
-                    : ""}
-                  {b.coach ? ` · ${b.coach}` : ""}
+                <span className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-ink-soft">
+                  <span>
+                    {b.startsAt
+                      ? `${cap(formatDayLabel(b.startsAt, b.utcOffsetMin))} · ${formatTime(b.startsAt, b.utcOffsetMin)}`
+                      : ""}
+                    {b.coach ? ` · ${b.coach}` : ""}
+                  </span>
+                  <CancelBookingButton
+                    sessionId={b.sessionId}
+                    userId={m.id}
+                    who={m.fullName || "esta alumna"}
+                  />
                 </span>
               </li>
             ))}
