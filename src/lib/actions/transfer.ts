@@ -8,6 +8,7 @@ import { resolveStock } from "@/lib/stock";
 import { RECEIPTS_BUCKET } from "@/lib/receipts";
 import {
   loadPayableEvent,
+  loadPayableTrial,
   bookPaidSeat,
   PAYABLE_EVENT_MESSAGES,
 } from "@/lib/event-checkout";
@@ -57,7 +58,10 @@ export async function submitTransferAction(input: {
     .eq("id", 1)
     .maybeSingle();
   if (!settings?.transfer_enabled) {
-    return { ok: false, error: "El pago por transferencia no está disponible." };
+    return {
+      ok: false,
+      error: "El pago por transferencia no está disponible.",
+    };
   }
 
   const receipt = await checkReceipt(admin, user.id, input.receiptPath);
@@ -128,7 +132,10 @@ export async function submitTransferAction(input: {
     .single();
   if (!purchase) {
     console.error("[transfer] purchase insert failed", insertError?.message);
-    return { ok: false, error: "No se pudo registrar tu pago. Intenta de nuevo." };
+    return {
+      ok: false,
+      error: "No se pudo registrar tu pago. Intenta de nuevo.",
+    };
   }
 
   const { error: creditError } = await admin.from("credit_ledger").insert({
@@ -143,7 +150,10 @@ export async function submitTransferAction(input: {
     // fila aprobada sin acreditar.
     console.error("[transfer] credit failed", purchase.id, creditError.message);
     await admin.from("purchases").delete().eq("id", purchase.id);
-    return { ok: false, error: "No se pudo registrar tu pago. Intenta de nuevo." };
+    return {
+      ok: false,
+      error: "No se pudo registrar tu pago. Intenta de nuevo.",
+    };
   }
 
   revalidatePath("/cuenta");
@@ -169,7 +179,10 @@ async function checkReceipt(
     .from(RECEIPTS_BUCKET)
     .createSignedUrl(path, 60);
   if (error) {
-    return { ok: false, error: "No encontramos tu comprobante. Súbelo de nuevo." };
+    return {
+      ok: false,
+      error: "No encontramos tu comprobante. Súbelo de nuevo.",
+    };
   }
   return { ok: true, path };
 }
@@ -182,6 +195,8 @@ async function checkReceipt(
 export async function submitEventTransferAction(input: {
   sessionId: string;
   receiptPath: string;
+  /** Clase muestra con precio (0032) en vez de un lugar en clase especial. */
+  trial?: boolean;
 }): Promise<TransferResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Inicia sesión para continuar." };
@@ -195,14 +210,21 @@ export async function submitEventTransferAction(input: {
     .eq("id", 1)
     .maybeSingle();
   if (!settings?.transfer_enabled) {
-    return { ok: false, error: "El pago por transferencia no está disponible." };
+    return {
+      ok: false,
+      error: "El pago por transferencia no está disponible.",
+    };
   }
 
   const receipt = await checkReceipt(admin, user.id, input.receiptPath);
   if (!receipt.ok) return receipt;
 
-  const loaded = await loadPayableEvent(admin, input.sessionId, user.id);
-  if (!loaded.ok) return { ok: false, error: PAYABLE_EVENT_MESSAGES[loaded.code] };
+  const trial = input.trial === true;
+  const loaded = trial
+    ? await loadPayableTrial(admin, input.sessionId, user.id)
+    : await loadPayableEvent(admin, input.sessionId, user.id);
+  if (!loaded.ok)
+    return { ok: false, error: PAYABLE_EVENT_MESSAGES[loaded.code] };
   const event = loaded.event;
 
   const { data: purchase, error: insertError } = await admin
@@ -211,6 +233,7 @@ export async function submitEventTransferAction(input: {
       user_id: user.id,
       package_id: null,
       session_id: event.id,
+      trial,
       amount_mxn: event.pricing.priceMxn,
       credits: 0,
       status: "approved",
@@ -220,19 +243,39 @@ export async function submitEventTransferAction(input: {
     .select("id")
     .single();
   if (!purchase) {
-    console.error("[transfer] event purchase insert failed", insertError?.message);
-    return { ok: false, error: "No se pudo registrar tu pago. Intenta de nuevo." };
+    console.error(
+      "[transfer] event purchase insert failed",
+      insertError?.message,
+    );
+    return {
+      ok: false,
+      error: "No se pudo registrar tu pago. Intenta de nuevo.",
+    };
   }
 
-  if (!(await bookPaidSeat(admin, user.id, event.id))) {
+  if (
+    !(await bookPaidSeat(
+      admin,
+      user.id,
+      event.id,
+      trial ? "trial" : "event_payment",
+    ))
+  ) {
     await admin.from("purchases").delete().eq("id", purchase.id);
-    return { ok: false, error: "No se pudo reservar tu lugar. Intenta de nuevo." };
+    return {
+      ok: false,
+      error: "No se pudo reservar tu lugar. Intenta de nuevo.",
+    };
   }
 
   revalidatePath("/cuenta");
   revalidatePath("/horarios");
   revalidatePath("/admin", "layout"); // el contador del menú
-  return { ok: true, purchaseId: purchase.id, amountMxn: event.pricing.priceMxn };
+  return {
+    ok: true,
+    purchaseId: purchase.id,
+    amountMxn: event.pricing.priceMxn,
+  };
 }
 
 export type TransferDecision = "approve" | "reject";
@@ -253,11 +296,14 @@ export async function reviewTransferAction(
 
   const { data: purchase } = await admin
     .from("purchases")
-    .select("id, user_id, credits, status, method, session_id, packages(validity_days)")
+    .select(
+      "id, user_id, credits, status, method, session_id, trial, packages(validity_days)",
+    )
     .eq("id", purchaseId)
     .eq("method", "transfer")
     .maybeSingle();
-  if (!purchase) return { ok: false, error: "No encontramos esa transferencia." };
+  if (!purchase)
+    return { ok: false, error: "No encontramos esa transferencia." };
 
   if (purchase.session_id) {
     // Lugar en una clase especial (0027): no hay clases que retirar o
@@ -271,7 +317,14 @@ export async function reviewTransferAction(
         .eq("session_id", purchase.session_id)
         .eq("status", "confirmed");
       if (error) return { ok: false, error: error.message };
-    } else if (!(await bookPaidSeat(admin, purchase.user_id, purchase.session_id))) {
+    } else if (
+      !(await bookPaidSeat(
+        admin,
+        purchase.user_id,
+        purchase.session_id,
+        purchase.trial ? "trial" : "event_payment",
+      ))
+    ) {
       return {
         ok: false,
         error: "La clase ya no está programada; no se pudo recuperar el lugar.",

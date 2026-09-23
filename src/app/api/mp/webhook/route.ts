@@ -69,7 +69,7 @@ async function handlePayment(
 
   const { data: purchase } = await admin
     .from("purchases")
-    .select("id, user_id, credits, status, session_id, packages(validity_days)")
+    .select("id, user_id, credits, status, session_id, trial, packages(validity_days)")
     .eq("id", purchaseId)
     .single();
   if (!purchase || purchase.status === "approved") return false;
@@ -79,7 +79,12 @@ async function handlePayment(
   // Lugar en una clase especial (0027): reservar en vez de acreditar. Igual
   // que abajo, primero la reserva y luego el approved.
   if (payment.status === "approved" && purchase.session_id) {
-    const booked = await bookPaidSeat(admin, purchase.user_id, purchase.session_id);
+    const booked = await bookPaidSeat(
+      admin,
+      purchase.user_id,
+      purchase.session_id,
+      purchase.trial ? "trial" : "event_payment",
+    );
     if (!booked) return true;
     await admin
       .from("purchases")

@@ -55,6 +55,10 @@ export async function getSettings(): Promise<SiteSettings> {
       data.trial_class_enabled == null
         ? true
         : Boolean(data.trial_class_enabled),
+    trialClassPriceMxn:
+      data.trial_class_price_mxn != null && Number(data.trial_class_price_mxn) > 0
+        ? Number(data.trial_class_price_mxn)
+        : null,
   };
 }
 

@@ -62,6 +62,32 @@ export async function reserveTrialAction(
   return { ok: data === "ok", code: String(data) };
 }
 
+/**
+ * Clase muestra con precio (0032): el checkout trabaja con una sesión
+ * concreta, así que un hueco de la plantilla se materializa antes de ir a
+ * pagar. Devuelve el id de sesión al que mandar a la alumna.
+ */
+export async function prepareTrialCheckoutAction(
+  refStr: string,
+): Promise<{ ok: true; sessionId: string } | { ok: false; code: string }> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { ok: false, code: "not_configured" };
+
+  const ref = decodeRef(refStr);
+  if (!ref) return { ok: false, code: "error" };
+  if (ref.kind === "session") return { ok: true, sessionId: ref.sessionId };
+
+  const { data, error } = await supabase.rpc("materialize_session", {
+    p_weekly: ref.weeklyId,
+    p_date: ref.date,
+  });
+  if (error || !data) {
+    console.error("[prepareTrialCheckoutAction]", refStr, error?.message);
+    return { ok: false, code: "closed" };
+  }
+  return { ok: true, sessionId: String(data) };
+}
+
 export async function cancelAction(
   sessionId: string,
 ): Promise<BookingResult> {

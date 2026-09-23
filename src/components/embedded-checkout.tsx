@@ -20,6 +20,7 @@ export type { CheckoutPromo };
 export function EmbeddedCheckout({
   packageId = null,
   eventId = null,
+  trial = false,
   packageName,
   amount,
   publicKey,
@@ -34,6 +35,8 @@ export function EmbeddedCheckout({
    * lugar en vez de acreditar clases.
    */
   eventId?: string | null;
+  /** Con `eventId`: es la clase muestra con precio (0032), no un evento. */
+  trial?: boolean;
   packageName?: string;
   /** List price of the package, before any discount. */
   amount: number;
@@ -140,7 +143,7 @@ export function EmbeddedCheckout({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(
                 eventId
-                  ? { sessionId: eventId, formData }
+                  ? { sessionId: eventId, trial, formData }
                   : { packageId, formData, promoCode: appliedCode },
               ),
             });
@@ -155,13 +158,23 @@ export function EmbeddedCheckout({
                 }),
                 data.purchaseId,
               );
-              router.push(eventId ? "/cuenta?pago=evento" : "/cuenta?pago=ok");
+              router.push(
+                eventId
+                  ? trial
+                    ? "/cuenta?pago=muestra"
+                    : "/cuenta?pago=evento"
+                  : "/cuenta?pago=ok",
+              );
             } else if (
               data.status === "in_process" ||
               data.status === "pending"
             ) {
               router.push(
-                eventId ? "/cuenta?pago=evento_pendiente" : "/cuenta?pago=pendiente",
+                eventId
+                  ? trial
+                    ? "/cuenta?pago=muestra_pendiente"
+                    : "/cuenta?pago=evento_pendiente"
+                  : "/cuenta?pago=pendiente",
               );
             } else {
               // The server reads Mercado Pago's status_detail and hands us a

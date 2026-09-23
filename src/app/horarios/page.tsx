@@ -9,6 +9,7 @@ import { Sparkles } from "lucide-react";
 import {
   formatDayLabel,
   formatTabDay,
+  formatMxn,
   dayKey,
   zonedHour,
   cap,
@@ -237,7 +238,11 @@ export default async function HorariosPage({
               />
               <span>
                 <span className="font-medium">¿Primera vez en ÉLAN?</span> Tu
-                primera clase es de muestra, sin costo.{" "}
+                primera clase es de muestra
+                {settings.trialClassPriceMxn
+                  ? ` por ${formatMxn(settings.trialClassPriceMxn)}`
+                  : ", sin costo"}
+                .{" "}
                 {trialBanner === "signup"
                   ? "Crea tu cuenta, elige una clase y reserva."
                   : "Elige una clase y reserva."}

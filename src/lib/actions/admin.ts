@@ -62,6 +62,17 @@ export async function updateSettingsAction(
     };
   }
 
+  // Precio de la clase muestra (0032): vacío = sin costo.
+  const trialPriceRaw = str(fd, "trial_class_price_mxn");
+  const trialPrice = trialPriceRaw
+    ? Math.round(Number(trialPriceRaw) * 100) / 100
+    : null;
+  if (trialPrice !== null && !(trialPrice > 0)) {
+    return {
+      error: "El precio de la clase muestra debe ser mayor a cero, o déjalo vacío.",
+    };
+  }
+
   const { error } = await supabase
     .from("site_settings")
     .update({
@@ -78,6 +89,7 @@ export async function updateSettingsAction(
       transfer_accounts: str(fd, "transfer_accounts"),
       meta_pixel_id: metaPixelId,
       trial_class_enabled: fd.get("trial_class_enabled") === "on",
+      trial_class_price_mxn: trialPrice,
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);

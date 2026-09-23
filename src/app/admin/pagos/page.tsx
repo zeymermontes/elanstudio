@@ -25,6 +25,7 @@ type Row = {
   created_at: string;
   packages: { name: string } | { name: string }[] | null;
   class_sessions: EventRel | EventRel[] | null;
+  trial: boolean | null;
 };
 
 type EventRel = {
@@ -44,7 +45,8 @@ function itemName(r: Row, offset: number): string {
   const ev = one(r.class_sessions);
   if (!ev) return "—";
   const ct = one(ev.class_types);
-  return `${ev.title || ct?.name || "Clase especial"} · ${cap(formatDayLabel(ev.starts_at, offset))}`;
+  const name = ev.title || ct?.name || "Clase especial";
+  return `${r.trial ? "Clase muestra · " : ""}${name} · ${cap(formatDayLabel(ev.starts_at, offset))}`;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -70,7 +72,7 @@ export default async function AdminPagosPage() {
     const { data } = await supabase
       .from("purchases")
       .select(
-        "id, user_id, amount_mxn, credits, status, method, receipt_path, reviewed_at, mp_status_detail, created_at, packages(name), class_sessions(starts_at, title, class_types(name))",
+        "id, user_id, amount_mxn, credits, status, method, receipt_path, reviewed_at, mp_status_detail, created_at, packages(name), trial, class_sessions(starts_at, title, class_types(name))",
       )
       .order("created_at", { ascending: false })
       .limit(100);

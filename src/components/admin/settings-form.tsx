@@ -69,11 +69,12 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
         <h2 className="mb-1 font-serif text-2xl text-ink">Clase muestra</h2>
         <p className="mb-5 text-xs text-ink-soft">
           Quien nunca ha tenido clases (ni compradas, ni regaladas, ni
-          mensualidad) puede reservar una clase normal sin costo para conocer
-          el estudio. Necesita crear su cuenta para reservarla. No aplica a
-          clases especiales con costo.
+          mensualidad) puede reservar una clase normal para conocer el
+          estudio. Necesita crear su cuenta para reservarla. No aplica a
+          clases especiales con costo. Sin marcar, la clase muestra no se
+          ofrece ni se menciona en el sitio.
         </p>
-        <label className="flex items-center gap-3 text-sm text-ink">
+        <label className="mb-5 flex items-center gap-3 text-sm text-ink">
           <input
             type="checkbox"
             name="trial_class_enabled"
@@ -82,6 +83,21 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
           />
           Ofrecer clase muestra
         </label>
+        <Field label="Precio de la clase muestra (MXN)">
+          <input
+            type="number"
+            name="trial_class_price_mxn"
+            min={1}
+            step="0.01"
+            defaultValue={settings.trialClassPriceMxn ?? ""}
+            placeholder="Vacío = sin costo"
+            className={inputClass}
+          />
+        </Field>
+        <p className="mt-2 text-xs text-ink-soft">
+          Con precio, la alumna la paga con tarjeta o transferencia antes de
+          reservar. Vacío, se reserva sin costo.
+        </p>
       </div>
 
       <div className="surface-card rounded-2xl px-7 py-7 shadow-soft">

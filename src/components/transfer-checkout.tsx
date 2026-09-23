@@ -26,6 +26,7 @@ import { trackPixel, packageParams } from "@/lib/pixel";
 export function TransferCheckout({
   packageId = null,
   eventId = null,
+  trial = false,
   packageName,
   amount,
   accounts,
@@ -35,6 +36,8 @@ export function TransferCheckout({
   packageId?: string | null;
   /** Clase especial cuyo lugar se paga aparte (0027). Sin promociones. */
   eventId?: string | null;
+  /** Con `eventId`: es la clase muestra con precio (0032), no un evento. */
+  trial?: boolean;
   packageName?: string;
   /** Precio de lista, antes de descuentos. */
   amount: number;
@@ -106,7 +109,11 @@ export function TransferCheckout({
     setError(null);
     startTransition(async () => {
       const res = eventId
-        ? await submitEventTransferAction({ sessionId: eventId, receiptPath })
+        ? await submitEventTransferAction({
+            sessionId: eventId,
+            receiptPath,
+            trial,
+          })
         : await submitTransferAction({
             packageId: packageId ?? "",
             receiptPath,
@@ -125,7 +132,11 @@ export function TransferCheckout({
           res.purchaseId,
         );
         router.push(
-          eventId ? "/cuenta?pago=evento_transferencia" : "/cuenta?pago=transferencia",
+          eventId
+            ? trial
+              ? "/cuenta?pago=muestra_transferencia"
+              : "/cuenta?pago=evento_transferencia"
+            : "/cuenta?pago=transferencia",
         );
       } else setError(res.error ?? "No se pudo registrar tu pago.");
     });

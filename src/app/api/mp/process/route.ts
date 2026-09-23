@@ -8,6 +8,7 @@ import { resolveStock } from "@/lib/stock";
 import { paymentRejectionMessage } from "@/lib/mp-errors";
 import {
   loadPayableEvent,
+  loadPayableTrial,
   bookPaidSeat,
   PAYABLE_EVENT_MESSAGES,
 } from "@/lib/event-checkout";
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const packageId: string | undefined = body?.packageId;
   const sessionId: string | undefined = body?.sessionId;
+  const trial = body?.trial === true;
   const promoCode: string | null = body?.promoCode ?? null;
   const formData = body?.formData;
   if ((!packageId && !sessionId) || !formData?.token) {
@@ -46,6 +48,7 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       email: user.email ?? "",
       sessionId,
+      trial,
       formData,
     });
   }
@@ -154,7 +157,9 @@ export async function POST(req: NextRequest) {
           phone: profile?.phone ?? "",
         }),
       },
-      requestOptions: { idempotencyKey: idempotencyKey(user.id, formData.token) },
+      requestOptions: {
+        idempotencyKey: idempotencyKey(user.id, formData.token),
+      },
     });
 
     const status = payment.status ?? "rejected";
@@ -251,11 +256,14 @@ async function processEventPayment(
     userId,
     email,
     sessionId,
+    trial,
     formData,
   }: {
     userId: string;
     email: string;
     sessionId: string;
+    /** Clase muestra con precio (0032) en vez de un lugar en clase especial. */
+    trial: boolean;
     formData: {
       token: string;
       payment_method_id?: string;
@@ -265,7 +273,9 @@ async function processEventPayment(
     };
   },
 ) {
-  const loaded = await loadPayableEvent(admin, sessionId, userId);
+  const loaded = trial
+    ? await loadPayableTrial(admin, sessionId, userId)
+    : await loadPayableEvent(admin, sessionId, userId);
   if (!loaded.ok) {
     return NextResponse.json(
       { error: loaded.code, message: PAYABLE_EVENT_MESSAGES[loaded.code] },
@@ -274,6 +284,8 @@ async function processEventPayment(
   }
   const event = loaded.event;
   const chargeMxn = event.pricing.priceMxn;
+  const reason = trial ? "trial" : "event_payment";
+  const itemName = trial ? `Clase muestra · ${event.name}` : event.name;
 
   const { data: profile } = await admin
     .from("profiles")
@@ -287,6 +299,7 @@ async function processEventPayment(
       user_id: userId,
       package_id: null,
       session_id: event.id,
+      trial,
       amount_mxn: chargeMxn,
       credits: 0,
       status: "pending",
@@ -303,19 +316,27 @@ async function processEventPayment(
         payment_method_id: formData.payment_method_id,
         issuer_id: formData.issuer_id,
         installments: Number(formData.installments) || 1,
-        description: `${event.name} · ÉLANSTUDIO`,
+        description: `${itemName} · ÉLANSTUDIO`,
         payer: { email: formData.payer?.email ?? email },
         external_reference: purchase.id,
-        metadata: { purchase_id: purchase.id, user_id: userId, session_id: event.id },
+        metadata: {
+          purchase_id: purchase.id,
+          user_id: userId,
+          session_id: event.id,
+        },
         additional_info: buildAdditionalInfo({
-          pkg: { id: event.id, name: event.name },
+          pkg: { id: event.id, name: itemName },
           chargeMxn,
           fullName: profile?.full_name ?? "",
           phone: profile?.phone ?? "",
-          description: "Clase especial · ÉLANSTUDIO",
+          description: trial
+            ? "Clase muestra · ÉLANSTUDIO"
+            : "Clase especial · ÉLANSTUDIO",
         }),
       },
-      requestOptions: { idempotencyKey: idempotencyKey(userId, formData.token) },
+      requestOptions: {
+        idempotencyKey: idempotencyKey(userId, formData.token),
+      },
     });
 
     const status = payment.status ?? "rejected";
@@ -329,7 +350,10 @@ async function processEventPayment(
 
     // Reservar ANTES de aprobar, por la misma razón que con las clases: el
     // webhook no vuelve a tocar una compra ya aprobada.
-    if (status === "approved" && !(await bookPaidSeat(admin, userId, event.id))) {
+    if (
+      status === "approved" &&
+      !(await bookPaidSeat(admin, userId, event.id, reason))
+    ) {
       dbStatus = "pending";
     }
 

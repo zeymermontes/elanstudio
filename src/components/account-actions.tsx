@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   reserveAction,
   reserveTrialAction,
+  prepareTrialCheckoutAction,
   cancelAction,
 } from "@/lib/actions/booking";
 import { bookingMessage } from "@/lib/booking-messages";
@@ -47,13 +48,16 @@ export function ConfirmReserve({
   blocked,
   cost = null,
   trial = false,
+  trialPriceMxn = null,
 }: {
   refStr: string;
   label: string;
   blocked?: string | null;
   cost?: ReserveCost | null;
-  /** Puede reservar esta clase como clase muestra, sin costo (0030). */
+  /** Puede reservar esta clase como clase muestra (0030). */
   trial?: boolean;
+  /** Precio de la clase muestra (0032); null = sin costo. */
+  trialPriceMxn?: number | null;
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -101,6 +105,15 @@ export function ConfirmReserve({
 
   // La muestra solo aplica a clases normales; una especial sigue su flujo.
   const useTrial = trial && !special;
+  const paidTrial = useTrial && trialPriceMxn !== null && trialPriceMxn > 0;
+
+  function payTrial() {
+    start(async () => {
+      const res = await prepareTrialCheckoutAction(refStr);
+      if (res.ok) router.push(`/comprar/muestra/${res.sessionId}`);
+      else setMsg({ ok: false, text: bookingMessage(res.code) });
+    });
+  }
 
   return (
     <div className="surface-card mb-8 rounded-2xl border-l-2 border-pink px-6 py-5 shadow-soft">
@@ -118,7 +131,9 @@ export function ConfirmReserve({
             </p>
             {useTrial ? (
               <p className="mt-1 text-xs text-gold">
-                Es tu primera vez: esta clase es de muestra, sin costo.
+                {paidTrial
+                  ? `Es tu primera vez: esta clase es de muestra por ${formatMxn(trialPriceMxn)}.`
+                  : "Es tu primera vez: esta clase es de muestra, sin costo."}
               </p>
             ) : null}
             {special && cost ? (
@@ -141,7 +156,17 @@ export function ConfirmReserve({
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {useTrial ? (
+            {paidTrial ? (
+              <button
+                onClick={payTrial}
+                disabled={pending}
+                className="rounded-full bg-pink px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-white shadow-soft transition-colors hover:bg-pink-strong disabled:opacity-60"
+              >
+                {pending
+                  ? "Un momento…"
+                  : `Pagar clase muestra ${formatMxn(trialPriceMxn)}`}
+              </button>
+            ) : useTrial ? (
               <button
                 onClick={confirmTrial}
                 disabled={pending}

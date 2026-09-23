@@ -26,6 +26,7 @@ import { packageParams } from "@/lib/pixel";
 import {
   formatDayLabel,
   formatTime,
+  formatMxn,
   cap,
   zonedToUtc,
   DEFAULT_UTC_OFFSET_MIN,
@@ -391,6 +392,7 @@ export default async function CuentaPage({
           blocked={reservarBlocked}
           cost={reservarCost}
           trial={trialEligible && !subActive}
+          trialPriceMxn={settingsForTrial.trialClassPriceMxn}
         />
       ) : null}
 
@@ -410,7 +412,9 @@ export default async function CuentaPage({
               {subActive
                 ? "Suscripción mensual activa"
                 : trialEligible && credits <= 0
-                  ? "Tu primera clase, sin costo"
+                  ? settingsForTrial.trialClassPriceMxn
+                    ? `Tu primera clase por ${formatMxn(settingsForTrial.trialClassPriceMxn)}`
+                    : "Tu primera clase, sin costo"
                   : "Clases disponibles"}
             </p>
           </div>
@@ -505,6 +509,18 @@ function PagoBanner({ status }: { status: string }) {
     },
     evento_transferencia: {
       text: "¡Gracias! Recibimos tu comprobante y tu lugar en la clase especial ya está reservado.",
+      ok: true,
+    },
+    muestra: {
+      text: "¡Pago recibido! Tu clase muestra ya está reservada. Te esperamos.",
+      ok: true,
+    },
+    muestra_pendiente: {
+      text: "Tu pago está pendiente de confirmación. En cuanto se apruebe, tu clase muestra queda reservada.",
+      ok: true,
+    },
+    muestra_transferencia: {
+      text: "¡Gracias! Recibimos tu comprobante y tu clase muestra ya está reservada.",
       ok: true,
     },
     error: { text: "El pago no se completó. Intenta de nuevo.", ok: false },
