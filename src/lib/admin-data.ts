@@ -34,18 +34,17 @@ export async function listMembers(): Promise<MemberRow[]> {
     { data: balances, error: balancesError },
     { data: subs },
     { data: bookings },
-  ] =
-    await Promise.all([
-      admin.from("profiles").select("id, full_name, role"),
-      // El mismo saldo que ve la alumna y su ficha (respeta vencimientos).
-      // Sumar los deltas a mano contaba también lo ya vencido.
-      admin.rpc("credit_balances"),
-      admin
-        .from("subscriptions")
-        .select("user_id, current_period_end")
-        .eq("status", "authorized"),
-      admin.from("bookings").select("user_id").eq("status", "confirmed"),
-    ]);
+  ] = await Promise.all([
+    admin.from("profiles").select("id, full_name, role"),
+    // El mismo saldo que ve la alumna y su ficha (respeta vencimientos).
+    // Sumar los deltas a mano contaba también lo ya vencido.
+    admin.rpc("credit_balances"),
+    admin
+      .from("subscriptions")
+      .select("user_id, current_period_end")
+      .eq("status", "authorized"),
+    admin.from("bookings").select("user_id").eq("status", "confirmed"),
+  ]);
 
   const nameRole = new Map(
     (profiles ?? []).map((p) => [p.id, { name: p.full_name, role: p.role }]),
@@ -81,7 +80,9 @@ export async function listMembers(): Promise<MemberRow[]> {
       subActive: subActive.has(u.id),
       bookings: bookingCount.get(u.id) ?? 0,
     }))
-    .sort((a, b) => (a.fullName || a.email).localeCompare(b.fullName || b.email));
+    .sort((a, b) =>
+      (a.fullName || a.email).localeCompare(b.fullName || b.email),
+    );
 }
 
 export type MemberBooking = {
@@ -149,36 +150,35 @@ export async function getMemberDetail(
     { data: rawLots },
     { data: sub },
     { data: rawBookings },
-  ] =
-    await Promise.all([
-      admin
-        .from("profiles")
-        .select(
-          "full_name, phone, role, birth_date, health_conditions, injuries, activity_type, notes",
-        )
-        .eq("id", id)
-        .single(),
-      admin.rpc("credit_balance", { p_user: id }),
-      admin.rpc("credit_lots", { p_user: id }),
-      admin
-        .from("subscriptions")
-        .select("current_period_end")
-        .eq("user_id", id)
-        .eq("status", "authorized")
-        .order("current_period_end", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      admin
-        .from("bookings")
-        .select(
-          // locations viene por su huso: sin él relOffset cae al default y la
-          // hora se pinta con una hora de más para una sede que no es UTC-6.
-          "session_id, status, attended, created_at, class_sessions(starts_at, class_types(name), coaches(name), locations(utc_offset_minutes))",
-        )
-        .eq("user_id", id)
-        .eq("status", "confirmed")
-        .order("created_at", { ascending: false }),
-    ]);
+  ] = await Promise.all([
+    admin
+      .from("profiles")
+      .select(
+        "full_name, phone, role, birth_date, health_conditions, injuries, activity_type, notes",
+      )
+      .eq("id", id)
+      .single(),
+    admin.rpc("credit_balance", { p_user: id }),
+    admin.rpc("credit_lots", { p_user: id }),
+    admin
+      .from("subscriptions")
+      .select("current_period_end")
+      .eq("user_id", id)
+      .eq("status", "authorized")
+      .order("current_period_end", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    admin
+      .from("bookings")
+      .select(
+        // locations viene por su huso: sin él relOffset cae al default y la
+        // hora se pinta con una hora de más para una sede que no es UTC-6.
+        "session_id, status, attended, created_at, class_sessions(starts_at, title, class_types(name), coaches(name), locations(utc_offset_minutes))",
+      )
+      .eq("user_id", id)
+      .eq("status", "confirmed")
+      .order("created_at", { ascending: false }),
+  ]);
 
   const { data: ledger } = await admin
     .from("credit_ledger")
@@ -222,16 +222,23 @@ export async function getMemberDetail(
       attended: boolean | null;
       class_sessions: {
         starts_at: string;
+        title: string | null;
         class_types: { name: string } | { name: string }[] | null;
         coaches: { name: string } | { name: string }[] | null;
-        locations: { utc_offset_minutes: number } | { utc_offset_minutes: number }[] | null;
+        locations:
+          | { utc_offset_minutes: number }
+          | { utc_offset_minutes: number }[]
+          | null;
       } | null;
     }[]
   ).map((b) => ({
     sessionId: b.session_id,
     startsAt: b.class_sessions?.starts_at ?? null,
     utcOffsetMin: relOffset(b.class_sessions?.locations ?? null),
-    className: firstName(b.class_sessions?.class_types ?? null) || "Clase",
+    className:
+      b.class_sessions?.title ||
+      firstName(b.class_sessions?.class_types ?? null) ||
+      "Clase",
     coach: firstName(b.class_sessions?.coaches ?? null),
     attended: b.attended,
   }));
@@ -353,7 +360,7 @@ export async function getBirthdayBookings(
   const { data: bookings } = await admin
     .from("bookings")
     .select(
-      "user_id, class_sessions(starts_at, class_types(name), locations(utc_offset_minutes))",
+      "user_id, class_sessions(starts_at, title, class_types(name), locations(utc_offset_minutes))",
     )
     .eq("status", "confirmed");
   if (!bookings?.length) return [];
@@ -389,10 +396,16 @@ export async function getBirthdayBookings(
     const cs = (b as { class_sessions: unknown }).class_sessions as
       | {
           starts_at: string;
+          title?: string | null;
           class_types: { name: string } | { name: string }[] | null;
           locations: unknown;
         }
-      | { starts_at: string; class_types: unknown; locations: unknown }[]
+      | {
+          starts_at: string;
+          title?: string | null;
+          class_types: unknown;
+          locations: unknown;
+        }[]
       | null;
     const session = Array.isArray(cs) ? cs[0] : cs;
     if (!session?.starts_at) continue;
@@ -408,7 +421,8 @@ export async function getBirthdayBookings(
     if (sm === bd.month && sd === bd.day) {
       out.push({
         name: bd.name,
-        className: firstName(session.class_types as never) || "Clase",
+        className:
+          session.title || firstName(session.class_types as never) || "Clase",
         startsAt: session.starts_at,
         utcOffsetMin: offsetMin,
       });
@@ -459,7 +473,7 @@ export async function getReservationsBySession(
   let query = admin
     .from("class_sessions")
     .select(
-      "id, starts_at, ends_at, class_types(name), coaches(name), locations(name, utc_offset_minutes)",
+      "id, starts_at, ends_at, title, class_types(name), coaches(name), locations(name, utc_offset_minutes)",
     )
     .eq("status", "scheduled")
     .gte("starts_at", from)
@@ -507,13 +521,19 @@ export async function getReservationsBySession(
         id: string;
         starts_at: string;
         ends_at: string;
+        title: string | null;
         class_types: RelName;
         coaches: RelName;
-        locations: RelName | ({ name: string; utc_offset_minutes: number } | { name: string; utc_offset_minutes: number }[]);
+        locations:
+          | RelName
+          | (
+              | { name: string; utc_offset_minutes: number }
+              | { name: string; utc_offset_minutes: number }[]
+            );
       };
       return {
         sessionId: sx.id,
-        className: firstName(sx.class_types) || "Clase",
+        className: sx.title || firstName(sx.class_types) || "Clase",
         startsAt: sx.starts_at,
         utcOffsetMin: relOffset(sx.locations),
         endsAt: sx.ends_at,
@@ -564,7 +584,7 @@ export async function getSessionRoster(
   const { data: session } = await admin
     .from("class_sessions")
     .select(
-      "starts_at, capacity, class_types(name), coaches(name), locations(name, utc_offset_minutes)",
+      "starts_at, capacity, title, class_types(name), coaches(name), locations(name, utc_offset_minutes)",
     )
     .eq("id", sessionId)
     .single();
@@ -599,13 +619,12 @@ export async function getSessionRoster(
     page: 1,
     perPage: 1000,
   });
-  const emails = new Map(
-    (list?.users ?? []).map((u) => [u.id, u.email ?? ""]),
-  );
+  const emails = new Map((list?.users ?? []).map((u) => [u.id, u.email ?? ""]));
 
   const s = session as unknown as {
     starts_at: string;
     capacity: number;
+    title: string | null;
     class_types: { name: string } | { name: string }[] | null;
     coaches: { name: string } | { name: string }[] | null;
     locations: { name: string } | { name: string }[] | null;
@@ -625,7 +644,7 @@ export async function getSessionRoster(
     id: sessionId,
     startsAt: s.starts_at,
     utcOffsetMin: relOffset(s.locations),
-    className: firstName(s.class_types) || "Clase",
+    className: s.title || firstName(s.class_types) || "Clase",
     coach: firstName(s.coaches),
     location: firstName(s.locations),
     capacity: s.capacity,

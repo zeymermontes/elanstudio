@@ -39,11 +39,12 @@ export async function loadPayableEvent(
   const { data: row } = await admin
     .from("class_sessions")
     .select(
-      "id, starts_at, status, capacity, credit_cost, price_mxn, plan_included, class_types(name), coaches(name), locations(name, utc_offset_minutes)",
+      "id, starts_at, status, capacity, credit_cost, price_mxn, plan_included, title, class_types(name), coaches(name), locations(name, utc_offset_minutes)",
     )
     .eq("id", sessionId)
     .maybeSingle();
-  if (!row || row.status !== "scheduled") return { ok: false, code: "not_found" };
+  if (!row || row.status !== "scheduled")
+    return { ok: false, code: "not_found" };
 
   const pricing = rowPricing(row as Record<string, unknown>);
   if (pricing.priceMxn === null) return { ok: false, code: "not_found" };
@@ -68,10 +69,14 @@ export async function loadPayableEvent(
     return { ok: false, code: "closed" };
   if (booked >= row.capacity) return { ok: false, code: "full" };
 
-  const one = <T,>(v: T | T[] | null): T | null =>
+  const one = <T>(v: T | T[] | null): T | null =>
     Array.isArray(v) ? (v[0] ?? null) : v;
-  const ct = one(row.class_types as { name: string } | { name: string }[] | null);
-  const coach = one(row.coaches as { name: string } | { name: string }[] | null);
+  const ct = one(
+    row.class_types as { name: string } | { name: string }[] | null,
+  );
+  const coach = one(
+    row.coaches as { name: string } | { name: string }[] | null,
+  );
   const loc = one(
     row.locations as
       | { name: string; utc_offset_minutes: number }
@@ -83,7 +88,7 @@ export async function loadPayableEvent(
     ok: true,
     event: {
       id: row.id,
-      name: ct?.name ?? "Clase especial",
+      name: (row.title as string | null) || ct?.name || "Clase especial",
       startsAt: row.starts_at,
       utcOffsetMin: loc?.utc_offset_minutes ?? DEFAULT_UTC_OFFSET_MIN,
       coach: coach?.name ?? null,

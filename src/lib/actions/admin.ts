@@ -360,10 +360,11 @@ export async function saveSessionAction(
   if (!classTypeId || !startsAtLocal)
     return { error: "Selecciona clase y fecha." };
 
-  // Look up duration to compute the end time.
+  // Look up duration to compute the end time (and the class's own name and
+  // description, to store the event's only when they differ).
   const { data: ct } = await supabase
     .from("class_types")
-    .select("duration_min, default_capacity")
+    .select("duration_min, default_capacity, name, description")
     .eq("id", classTypeId)
     .single();
 
@@ -396,8 +397,20 @@ export async function saveSessionAction(
   if (priceMxn !== null && !(priceMxn > 0))
     return { error: "El precio aparte debe ser mayor a cero, o déjalo vacío." };
   if (creditCost === 0 && priceMxn === null)
-    return { error: "Con 0 clases la clase solo se paga aparte: ponle un precio." };
+    return {
+      error: "Con 0 clases la clase solo se paga aparte: ponle un precio.",
+    };
   const payOnly = creditCost === 0;
+
+  // Título y descripción propios (0031). Iguales a los de la clase → null,
+  // para que un cambio en la clase siga llegando al evento.
+  const title = str(fd, "title");
+  const description = str(fd, "description");
+  const ownTitle = title && title !== (ct?.name ?? "").trim() ? title : null;
+  const ownDescription =
+    description && description !== (ct?.description ?? "").trim()
+      ? description
+      : null;
 
   const row = {
     class_type_id: classTypeId,
@@ -410,6 +423,8 @@ export async function saveSessionAction(
     credit_cost: creditCost,
     price_mxn: priceMxn,
     plan_included: !payOnly && fd.get("plan_included") === "on",
+    title: ownTitle,
+    description: ownDescription,
   };
 
   // El filtro por weekly_class_id null es un cinturón de seguridad: este
@@ -449,10 +464,7 @@ export async function cancelEventAction(id: string): Promise<FormState> {
 export async function deleteSessionAction(id: string): Promise<FormState> {
   const supabase = await adminClient();
   if (!supabase) return { error: NOT_CONFIGURED };
-  const { error } = await supabase
-    .from("class_sessions")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("class_sessions").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/");
   revalidatePath("/admin/horario");
@@ -471,8 +483,11 @@ async function coachOwnsSession(
     .select("coaches(user_id)")
     .eq("id", sessionId)
     .single();
-  const c = (data as { coaches: { user_id: string } | { user_id: string }[] | null } | null)
-    ?.coaches;
+  const c = (
+    data as {
+      coaches: { user_id: string } | { user_id: string }[] | null;
+    } | null
+  )?.coaches;
   const ownerId = Array.isArray(c) ? c[0]?.user_id : c?.user_id;
   return ownerId === userId;
 }
@@ -608,8 +623,7 @@ export async function coverCoachAction(
   const ref = decodeRef(refStr);
   if (!ref) return { error: "Referencia inválida." };
 
-  let sessionId: string | null =
-    ref.kind === "session" ? ref.sessionId : null;
+  let sessionId: string | null = ref.kind === "session" ? ref.sessionId : null;
   if (ref.kind === "weekly") {
     const { data } = await supabase.rpc("materialize_session", {
       p_weekly: ref.weeklyId,
@@ -698,9 +712,10 @@ export async function savePromotionAction(
   if (error) {
     // The unique index on upper(code) is the likeliest failure here.
     return {
-      error: error.code === "23505"
-        ? "Ya existe otra promoción con ese código."
-        : error.message,
+      error:
+        error.code === "23505"
+          ? "Ya existe otra promoción con ese código."
+          : error.message,
     };
   }
 
@@ -717,7 +732,10 @@ export async function savePromotionAction(
     const { error: linkError } = await supabase
       .from("promotion_packages")
       .insert(
-        packageIds.map((package_id) => ({ promotion_id: promotionId, package_id })),
+        packageIds.map((package_id) => ({
+          promotion_id: promotionId,
+          package_id,
+        })),
       );
     if (linkError) return { error: linkError.message };
   }

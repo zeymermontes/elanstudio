@@ -29,6 +29,7 @@ type Row = {
 
 type EventRel = {
   starts_at: string;
+  title: string | null;
   class_types: { name: string } | { name: string }[] | null;
 };
 
@@ -43,7 +44,7 @@ function itemName(r: Row, offset: number): string {
   const ev = one(r.class_sessions);
   if (!ev) return "—";
   const ct = one(ev.class_types);
-  return `${ct?.name ?? "Clase especial"} · ${cap(formatDayLabel(ev.starts_at, offset))}`;
+  return `${ev.title || ct?.name || "Clase especial"} · ${cap(formatDayLabel(ev.starts_at, offset))}`;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -69,7 +70,7 @@ export default async function AdminPagosPage() {
     const { data } = await supabase
       .from("purchases")
       .select(
-        "id, user_id, amount_mxn, credits, status, method, receipt_path, reviewed_at, mp_status_detail, created_at, packages(name), class_sessions(starts_at, class_types(name))",
+        "id, user_id, amount_mxn, credits, status, method, receipt_path, reviewed_at, mp_status_detail, created_at, packages(name), class_sessions(starts_at, title, class_types(name))",
       )
       .order("created_at", { ascending: false })
       .limit(100);
@@ -97,7 +98,8 @@ export default async function AdminPagosPage() {
   }
 
   const toReview = rows.filter(
-    (r) => r.method === "transfer" && !r.reviewed_at && r.status !== "cancelled",
+    (r) =>
+      r.method === "transfer" && !r.reviewed_at && r.status !== "cancelled",
   );
 
   const when = (iso: string) =>
@@ -110,8 +112,8 @@ export default async function AdminPagosPage() {
         <PaymentsRealtime />
       </div>
       <p className="mt-1 mb-8 text-sm text-ink-soft">
-        Compras de paquetes y lugares en clases especiales, con tarjeta
-        (Mercado Pago) y por transferencia. La lista se actualiza en vivo.
+        Compras de paquetes y lugares en clases especiales, con tarjeta (Mercado
+        Pago) y por transferencia. La lista se actualiza en vivo.
       </p>
 
       {/* ---------- Transferencias por revisar ---------- */}
@@ -141,12 +143,20 @@ export default async function AdminPagosPage() {
                   </p>
                   <p className="mt-1 text-sm text-ink-soft">
                     {itemName(r, offset)} ·{" "}
-                    <span className="text-ink">{formatMxn(Number(r.amount_mxn))}</span>
+                    <span className="text-ink">
+                      {formatMxn(Number(r.amount_mxn))}
+                    </span>
                   </p>
-                  <p className="mt-0.5 text-xs text-ink-soft">{when(r.created_at)}</p>
+                  <p className="mt-0.5 text-xs text-ink-soft">
+                    {when(r.created_at)}
+                  </p>
                   <ReceiptLink
                     path={r.receipt_path}
-                    url={r.receipt_path ? receiptUrls.get(r.receipt_path) : undefined}
+                    url={
+                      r.receipt_path
+                        ? receiptUrls.get(r.receipt_path)
+                        : undefined
+                    }
                     memberName={names.get(r.user_id) ?? "la alumna"}
                   />
                 </div>
@@ -183,28 +193,47 @@ export default async function AdminPagosPage() {
                 {rows.map((r) => {
                   const transfer = r.method === "transfer";
                   return (
-                    <tr key={r.id} className="border-b border-line/60 last:border-0 align-top">
+                    <tr
+                      key={r.id}
+                      className="border-b border-line/60 last:border-0 align-top"
+                    >
                       <td className="px-5 py-3 text-ink">
                         {names.get(r.user_id) ?? "—"}
-                        <p className="mt-0.5 text-xs text-ink-soft">{when(r.created_at)}</p>
+                        <p className="mt-0.5 text-xs text-ink-soft">
+                          {when(r.created_at)}
+                        </p>
                       </td>
-                      <td className="px-5 py-3 text-ink-soft">{itemName(r, offset)}</td>
+                      <td className="px-5 py-3 text-ink-soft">
+                        {itemName(r, offset)}
+                      </td>
                       <td className="px-5 py-3 text-ink-soft">
                         {formatMxn(Number(r.amount_mxn))}
                       </td>
                       <td className="px-5 py-3 text-ink-soft">
                         <span className="inline-flex items-center gap-1.5">
                           {transfer ? (
-                            <Landmark size={13} strokeWidth={1.5} className="text-gold" />
+                            <Landmark
+                              size={13}
+                              strokeWidth={1.5}
+                              className="text-gold"
+                            />
                           ) : (
-                            <CreditCard size={13} strokeWidth={1.5} className="text-gold" />
+                            <CreditCard
+                              size={13}
+                              strokeWidth={1.5}
+                              className="text-gold"
+                            />
                           )}
                           {transfer ? "Transferencia" : "Tarjeta"}
                         </span>
                         {transfer ? (
                           <ReceiptLink
                             path={r.receipt_path}
-                            url={r.receipt_path ? receiptUrls.get(r.receipt_path) : undefined}
+                            url={
+                              r.receipt_path
+                                ? receiptUrls.get(r.receipt_path)
+                                : undefined
+                            }
                             memberName={names.get(r.user_id) ?? "la alumna"}
                           />
                         ) : null}
@@ -221,12 +250,18 @@ export default async function AdminPagosPage() {
                         >
                           {STATUS_LABEL[r.status] ?? r.status}
                         </span>
-                        {transfer && !r.reviewed_at && r.status !== "cancelled" ? (
-                          <p className="mt-1.5 text-xs text-pink-strong">Por revisar</p>
+                        {transfer &&
+                        !r.reviewed_at &&
+                        r.status !== "cancelled" ? (
+                          <p className="mt-1.5 text-xs text-pink-strong">
+                            Por revisar
+                          </p>
                         ) : null}
                         {/* Why it failed, in the same words the member saw — so a
                             mistyped CVV and a bank block don't read as one problem. */}
-                        {!transfer && r.status === "rejected" && r.mp_status_detail ? (
+                        {!transfer &&
+                        r.status === "rejected" &&
+                        r.mp_status_detail ? (
                           <p
                             className="mt-1.5 max-w-[22rem] text-xs text-ink-soft"
                             title={r.mp_status_detail}
@@ -235,7 +270,9 @@ export default async function AdminPagosPage() {
                           </p>
                         ) : null}
                         {/* Una transferencia ya revisada se puede corregir. */}
-                        {transfer && r.reviewed_at && r.status !== "cancelled" ? (
+                        {transfer &&
+                        r.reviewed_at &&
+                        r.status !== "cancelled" ? (
                           <div className="mt-2">
                             <TransferReview
                               purchaseId={r.id}

@@ -46,6 +46,7 @@ type BookingRow = {
   class_sessions: {
     starts_at: string;
     status: string;
+    title: string | null;
     class_types: { name: string; duration_min: number } | null;
     coaches: { name: string } | null;
     locations: { name: string; utc_offset_minutes: number } | null;
@@ -110,7 +111,7 @@ export default async function CuentaPage({
     supabase
       .from("bookings")
       .select(
-        "session_id, class_sessions!inner(starts_at, status, class_types(name, duration_min), coaches(name), locations(name, utc_offset_minutes))",
+        "session_id, class_sessions!inner(starts_at, status, title, class_types(name, duration_min), coaches(name), locations(name, utc_offset_minutes))",
       )
       .eq("user_id", user.id)
       .eq("status", "confirmed"),
@@ -127,7 +128,7 @@ export default async function CuentaPage({
     supabase
       .from("purchases")
       .select(
-        "id, reviewed_at, packages(name), class_sessions(class_types(name))",
+        "id, reviewed_at, packages(name), class_sessions(title, class_types(name))",
       )
       .eq("user_id", user.id)
       .eq("method", "transfer")
@@ -218,13 +219,14 @@ export default async function CuentaPage({
     const { data: sess } = await supabase
       .from("class_sessions")
       .select(
-        "starts_at, credit_cost, price_mxn, plan_included, class_types(name), locations(utc_offset_minutes)",
+        "starts_at, credit_cost, price_mxn, plan_included, title, class_types(name), locations(utc_offset_minutes)",
       )
       .eq("id", reserveRef.sessionId)
       .single();
     if (sess) {
       const raw = sess as unknown as {
         starts_at: string;
+        title: string | null;
         credit_cost: number | null;
         price_mxn: number | string | null;
         plan_included: boolean | null;
@@ -241,7 +243,7 @@ export default async function CuentaPage({
         ? raw.class_types[0]
         : raw.class_types;
       const off = raw.locations?.utc_offset_minutes ?? DEFAULT_UTC_OFFSET_MIN;
-      reservarLabel = `${ct?.name ?? "Clase"} · ${cap(
+      reservarLabel = `${raw.title || ct?.name || "Clase"} · ${cap(
         formatDayLabel(raw.starts_at, off),
       )} ${formatTime(raw.starts_at, off)}`;
       const win = bookingWindow(
@@ -343,13 +345,18 @@ export default async function CuentaPage({
             const pkgName = Array.isArray(p) ? p[0]?.name : p?.name;
             if (pkgName) return pkgName;
             // Un lugar pagado aparte: la clase, no un paquete.
-            const cs = r.class_sessions as
-              | { class_types: { name: string } | { name: string }[] | null }
-              | { class_types: { name: string } | { name: string }[] | null }[]
-              | null;
+            type CsRel = {
+              title: string | null;
+              class_types: { name: string } | { name: string }[] | null;
+            };
+            const cs = r.class_sessions as CsRel | CsRel[] | null;
             const one = Array.isArray(cs) ? cs[0] : cs;
             const ct = one?.class_types;
-            return (Array.isArray(ct) ? ct[0]?.name : ct?.name) ?? "tu paquete";
+            return (
+              one?.title ||
+              (Array.isArray(ct) ? ct[0]?.name : ct?.name) ||
+              "tu paquete"
+            );
           })}
           whatsapp={studio?.whatsapp ?? ""}
         />
@@ -449,7 +456,7 @@ export default async function CuentaPage({
               >
                 <div>
                   <h3 className="font-serif text-xl text-ink">
-                    {cs.class_types?.name}
+                    {cs.title || cs.class_types?.name}
                   </h3>
                   <p className="mt-1 text-xs text-ink-soft">
                     {cap(formatDayLabel(cs.starts_at, bookingOffset(cs)))} ·{" "}

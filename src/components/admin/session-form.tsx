@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { ClipboardCheck } from "lucide-react";
 import {
@@ -38,8 +38,30 @@ export function SessionForm({
   const sessionId =
     event && event.ref.kind === "session" ? event.ref.sessionId : null;
 
+  // Título y descripción del evento (0031). Al elegir la clase se prellenan
+  // con los suyos; si el admin ya escribió algo, no se le pisa. Al editar
+  // llegan ya resueltos en event.classType.
+  const [title, setTitle] = useState(event?.classType.name ?? "");
+  const [description, setDescription] = useState(
+    event?.classType.description ?? "",
+  );
+  const [touched, setTouched] = useState({
+    title: !!event,
+    description: !!event,
+  });
+
+  function onClassChange(id: string) {
+    const ct = classTypes.find((c) => c.id === id);
+    if (!ct) return;
+    if (!touched.title) setTitle(ct.name);
+    if (!touched.description) setDescription(ct.description);
+  }
+
   return (
-    <form action={action} className="surface-card rounded-2xl px-6 py-6 shadow-soft">
+    <form
+      action={action}
+      className="surface-card rounded-2xl px-6 py-6 shadow-soft"
+    >
       {sessionId ? <input type="hidden" name="id" value={sessionId} /> : null}
       <div className="space-y-4">
         <StatusBanner state={state} />
@@ -48,6 +70,7 @@ export function SessionForm({
             <select
               name="class_type_id"
               defaultValue={event?.classType.id ?? ""}
+              onChange={(e) => onClassChange(e.target.value)}
               required
               className={inputClass}
             >
@@ -112,6 +135,38 @@ export function SessionForm({
           </Field>
         </div>
 
+        <div className="grid gap-4">
+          <Field label="Título del evento">
+            <input
+              name="title"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setTouched((t) => ({ ...t, title: true }));
+              }}
+              placeholder="Se toma de la clase"
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Descripción">
+            <textarea
+              name="description"
+              rows={3}
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                setTouched((t) => ({ ...t, description: true }));
+              }}
+              placeholder="Se toma de la clase"
+              className={inputClass}
+            />
+          </Field>
+          <p className="-mt-2 text-xs text-ink-soft/80">
+            Se llenan con los de la clase al elegirla; cámbialos si el evento
+            merece su propio nombre. Si los dejas iguales, siguen a la clase.
+          </p>
+        </div>
+
         {/* Costo. Una clase normal vale 1 clase y la cubre la mensualidad;
             un taller o una masterclass puede valer más, venderse aparte o
             quedar fuera del plan. */}
@@ -145,8 +200,8 @@ export function SessionForm({
           </div>
           <p className="mt-2 text-xs text-ink-soft/80">
             Con precio, la alumna elige: gasta sus clases o la paga aparte con
-            tarjeta o transferencia. Con 0 clases el pago es forzoso: solo
-            entra pagando el precio, ni con paquete ni con mensualidad.
+            tarjeta o transferencia. Con 0 clases el pago es forzoso: solo entra
+            pagando el precio, ni con paquete ni con mensualidad.
           </p>
           <label className="mt-4 flex items-start gap-2.5 text-sm text-ink-soft">
             <input

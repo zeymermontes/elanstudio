@@ -52,7 +52,9 @@ export async function getSettings(): Promise<SiteSettings> {
     transferAccounts: data.transfer_accounts ?? "",
     metaPixelId: data.meta_pixel_id ?? "",
     trialClassEnabled:
-      data.trial_class_enabled == null ? true : Boolean(data.trial_class_enabled),
+      data.trial_class_enabled == null
+        ? true
+        : Boolean(data.trial_class_enabled),
   };
 }
 
@@ -69,8 +71,7 @@ export async function getStudioUtcOffset(): Promise<number> {
 
 export async function getServices(): Promise<Service[]> {
   const supabase = await createSupabaseServerClient();
-  if (!supabase)
-    return [...seedServices].sort((a, b) => a.order - b.order);
+  if (!supabase) return [...seedServices].sort((a, b) => a.order - b.order);
   const { data } = await supabase
     .from("services")
     .select("*")
@@ -249,7 +250,8 @@ async function getBookedCounts(
   const { data, error } = await supabase.rpc("session_booked_counts", {
     p_sessions: ids,
   });
-  if (error) console.error("[session_booked_counts]", error.code, error.message);
+  if (error)
+    console.error("[session_booked_counts]", error.code, error.message);
   for (const r of (data ?? []) as { session_id: string; booked: number }[])
     counts.set(r.session_id, r.booked);
   return counts;
@@ -319,11 +321,24 @@ function toEventSlot(
   if (!ct) return null;
   const locationId = (s.location_id as string) ?? null;
   const capacity = s.capacity as number;
+  // Título y descripción propios del evento (0031); null = los de la clase.
+  const title = typeof s.title === "string" && s.title.trim() ? s.title : null;
+  const description =
+    typeof s.description === "string" && s.description.trim()
+      ? s.description
+      : null;
   return {
     ref: { kind: "session", sessionId: s.id as string },
-    classType: ct,
-    coach: s.coach_id ? coachById.get(s.coach_id as string) ?? null : null,
-    location: locationId ? locById.get(locationId) ?? null : null,
+    classType:
+      title || description
+        ? {
+            ...ct,
+            name: title ?? ct.name,
+            description: description ?? ct.description,
+          }
+        : ct,
+    coach: s.coach_id ? (coachById.get(s.coach_id as string) ?? null) : null,
+    location: locationId ? (locById.get(locationId) ?? null) : null,
     startsAt: s.starts_at as string,
     endsAt: s.ends_at as string,
     capacity,
@@ -347,7 +362,9 @@ function toEventSlot(
 export async function getSpecialEvents({
   featuredOnly = false,
   daysAhead = EVENT_HORIZON_DAYS,
-}: { featuredOnly?: boolean; daysAhead?: number } = {}): Promise<ScheduleSlot[]> {
+}: { featuredOnly?: boolean; daysAhead?: number } = {}): Promise<
+  ScheduleSlot[]
+> {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return [];
 
@@ -438,8 +455,7 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
   // UTC, así que con new Date().setHours(0) el día cambiaba a las 6 pm de
   // CDMX (5 pm en Sinaloa) y el horario dejaba de mostrar las clases que
   // faltaban de ese día, aunque no hubieran empezado.
-  const studioOffset =
-    locations[0]?.utcOffsetMin ?? DEFAULT_UTC_OFFSET_MIN;
+  const studioOffset = locations[0]?.utcOffsetMin ?? DEFAULT_UTC_OFFSET_MIN;
   const todayStr = dayKey(new Date().toISOString(), studioOffset);
   const start = zonedToUtc(todayStr, "00:00", studioOffset);
   const end = new Date(start.getTime() + daysAhead * 86400000);
@@ -470,11 +486,13 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
   for (let d = 0; d < daysAhead; d++) {
     // Fecha de calendario del estudio; en UTC para que el huso del servidor
     // no toque ni el día ni el weekday.
-    const day = new Date(Date.UTC(
-      Number(todayStr.slice(0, 4)),
-      Number(todayStr.slice(5, 7)) - 1,
-      Number(todayStr.slice(8, 10)) + d,
-    ));
+    const day = new Date(
+      Date.UTC(
+        Number(todayStr.slice(0, 4)),
+        Number(todayStr.slice(5, 7)) - 1,
+        Number(todayStr.slice(8, 10)) + d,
+      ),
+    );
     const weekday = day.getUTCDay();
     const dateStr = day.toISOString().slice(0, 10);
 
@@ -493,15 +511,13 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
 
       if (mat) {
         if (mat.status === "cancelled") continue;
-        const endsAt = new Date(
-          startsAt.getTime() + w.durationMin * 60000,
-        );
+        const endsAt = new Date(startsAt.getTime() + w.durationMin * 60000);
         slots.push({
           ref: { kind: "session", sessionId: mat.id },
           classType: ct,
-          coach: mat.coach_id ? coachById.get(mat.coach_id) ?? null : null,
+          coach: mat.coach_id ? (coachById.get(mat.coach_id) ?? null) : null,
           location: mat.location_id
-            ? locById.get(mat.location_id) ?? null
+            ? (locById.get(mat.location_id) ?? null)
             : null,
           startsAt: startsAt.toISOString(),
           endsAt: endsAt.toISOString(),
@@ -519,8 +535,8 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
         slots.push({
           ref: { kind: "weekly", weeklyId: w.id, date: dateStr },
           classType: ct,
-          coach: w.coachId ? coachById.get(w.coachId) ?? null : null,
-          location: w.locationId ? locById.get(w.locationId) ?? null : null,
+          coach: w.coachId ? (coachById.get(w.coachId) ?? null) : null,
+          location: w.locationId ? (locById.get(w.locationId) ?? null) : null,
           startsAt: startsAt.toISOString(),
           endsAt: endsAt.toISOString(),
           capacity: w.capacity,
@@ -538,7 +554,11 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
 
   // One-off special events (no template).
   for (const s of oneOffs) {
-    const slot = toEventSlot(s, { ctById, coachById, locById }, counts.get(s.id) ?? 0);
+    const slot = toEventSlot(
+      s,
+      { ctById, coachById, locById },
+      counts.get(s.id) ?? 0,
+    );
     if (slot) slots.push(slot);
   }
 
