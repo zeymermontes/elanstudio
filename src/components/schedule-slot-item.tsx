@@ -219,11 +219,17 @@ function Modal({
           </div>
         ) : null}
 
-        <p className={`mt-6 text-sm ${full ? "text-ink-soft" : "text-gold"}`}>
-          {full
-            ? "Esta clase está llena."
-            : `${slot.spotsLeft} lugares disponibles`}
-        </p>
+        <div className="mt-6 flex items-center justify-between gap-4">
+          <p className={`text-sm ${full ? "text-ink-soft" : "text-gold"}`}>
+            {full
+              ? "Esta clase está llena."
+              : `${slot.spotsLeft} lugares disponibles`}
+          </p>
+          <ShareButton
+            path={slotPath(slot)}
+            title={`${slot.classType.name} · ÉLANSTUDIO`}
+          />
+        </div>
         {blocked && !full ? (
           <p className="mt-1.5 text-xs leading-relaxed text-ink-soft">
             {BOOKING_WINDOW_NOTE}
@@ -231,11 +237,6 @@ function Modal({
         ) : null}
 
         <div className="mt-5 flex items-center justify-end gap-3">
-          <ShareButton
-            path={slotPath(slot)}
-            title={`${slot.classType.name} · ÉLANSTUDIO`}
-            className="mr-auto"
-          />
           <button
             type="button"
             onClick={onClose}
