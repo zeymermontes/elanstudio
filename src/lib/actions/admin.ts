@@ -77,6 +77,7 @@ export async function updateSettingsAction(
       transfer_enabled: fd.get("transfer_enabled") === "on",
       transfer_accounts: str(fd, "transfer_accounts"),
       meta_pixel_id: metaPixelId,
+      trial_class_enabled: fd.get("trial_class_enabled") === "on",
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);

@@ -48,7 +48,7 @@ export function OnboardingForm({ firstName }: { firstName: string }) {
         ) : null}
 
         <label className="block">
-          <Label>Tu cumpleaños 🎂</Label>
+          <Label>Tu fecha de nacimiento 🎂</Label>
           <input type="date" name="birth_date" className={inputClass} />
           <span className="mt-1 block text-xs text-ink-soft">
             Para celebrarte como mereces en tu día.

@@ -47,7 +47,7 @@ export function ProfileEditForm({
       ) : null}
 
       <label className="block">
-        <Label>Tu cumpleaños 🎂</Label>
+        <Label>Tu fecha de nacimiento 🎂</Label>
         <input
           type="date"
           name="birth_date"

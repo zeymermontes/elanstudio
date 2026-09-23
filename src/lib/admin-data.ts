@@ -262,6 +262,8 @@ export type RosterEntry = {
   name: string;
   email: string;
   attended: boolean | null;
+  /** Vino con su clase muestra (0030): es su primera vez. */
+  trial: boolean;
 };
 
 export type SessionRoster = {
@@ -576,6 +578,16 @@ export async function getSessionRoster(
 
   const ids = (bookings ?? []).map((b) => b.user_id);
   const names = new Map<string, string>();
+  const trials = new Set<string>();
+  if (ids.length) {
+    const { data: trialRows } = await admin
+      .from("credit_ledger")
+      .select("user_id")
+      .eq("ref_id", sessionId)
+      .eq("reason", "trial")
+      .in("user_id", ids);
+    for (const t of trialRows ?? []) trials.add(t.user_id);
+  }
   if (ids.length) {
     const { data: profs } = await admin
       .from("profiles")
@@ -605,6 +617,7 @@ export async function getSessionRoster(
       name: names.get(b.user_id) ?? "",
       email: emails.get(b.user_id) ?? "",
       attended: b.attended as boolean | null,
+      trial: trials.has(b.user_id),
     }))
     .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
 

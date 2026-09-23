@@ -22,6 +22,8 @@ export type SiteSettings = {
   transferAccounts: string;
   /** Id del Pixel de Meta (Facebook/Instagram). Vacío = no se carga. */
   metaPixelId: string;
+  /** Clase muestra sin costo para quien nunca ha tenido clases (0030). */
+  trialClassEnabled: boolean;
 };
 
 export const defaultSettings: SiteSettings = {
@@ -37,6 +39,7 @@ export const defaultSettings: SiteSettings = {
   transferEnabled: false,
   transferAccounts: "",
   metaPixelId: "",
+  trialClassEnabled: true,
 };
 
 /**

@@ -17,6 +17,7 @@ export function CheckInRow({
   email,
   attended,
   canCancel = false,
+  trial = false,
 }: {
   sessionId: string;
   userId: string;
@@ -25,6 +26,8 @@ export function CheckInRow({
   attended: boolean | null;
   /** Solo el admin cancela por una alumna; la coach solo pasa lista. */
   canCancel?: boolean;
+  /** Primera vez en el estudio: vino con su clase muestra. */
+  trial?: boolean;
 }) {
   const [state, setState] = useState<boolean | null>(attended);
   const [pending, start] = useTransition();
@@ -41,7 +44,14 @@ export function CheckInRow({
   return (
     <article className="surface-card flex items-center justify-between gap-4 rounded-xl px-5 py-3 shadow-soft">
       <div className="min-w-0">
-        <p className="truncate text-sm text-ink">{name || email || "Miembro"}</p>
+        <p className="flex items-center gap-2 truncate text-sm text-ink">
+          {name || email || "Miembro"}
+          {trial ? (
+            <span className="shrink-0 rounded-full bg-gold-soft/50 px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-ink">
+              Clase muestra
+            </span>
+          ) : null}
+        </p>
         {name && email ? (
           <p className="truncate text-xs text-ink-soft">{email}</p>
         ) : null}

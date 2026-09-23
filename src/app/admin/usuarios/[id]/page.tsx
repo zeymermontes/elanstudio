@@ -36,6 +36,7 @@ const REASONS: Record<string, string> = {
   extension: "Vencimiento extendido",
   transfer_rejected: "Transferencia rechazada",
   event_payment: "Clase especial pagada aparte",
+  trial: "Clase muestra",
 };
 
 export default async function UsuarioDetailPage({

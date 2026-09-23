@@ -66,6 +66,25 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
       </div>
 
       <div className="surface-card rounded-2xl px-7 py-7 shadow-soft">
+        <h2 className="mb-1 font-serif text-2xl text-ink">Clase muestra</h2>
+        <p className="mb-5 text-xs text-ink-soft">
+          Quien nunca ha tenido clases (ni compradas, ni regaladas, ni
+          mensualidad) puede reservar una clase normal sin costo para conocer
+          el estudio. Necesita crear su cuenta para reservarla. No aplica a
+          clases especiales con costo.
+        </p>
+        <label className="flex items-center gap-3 text-sm text-ink">
+          <input
+            type="checkbox"
+            name="trial_class_enabled"
+            defaultChecked={settings.trialClassEnabled}
+            className="h-4 w-4 accent-pink-strong"
+          />
+          Ofrecer clase muestra
+        </label>
+      </div>
+
+      <div className="surface-card rounded-2xl px-7 py-7 shadow-soft">
         <h2 className="mb-1 font-serif text-2xl text-ink">Pago por transferencia</h2>
         <p className="mb-5 text-xs text-ink-soft">
           Además de la tarjeta, la alumna puede transferir y subir su comprobante.

@@ -2,7 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { reserveAction, cancelAction } from "@/lib/actions/booking";
+import {
+  reserveAction,
+  reserveTrialAction,
+  cancelAction,
+} from "@/lib/actions/booking";
 import { bookingMessage } from "@/lib/booking-messages";
 import { CANCEL_WINDOW_NOTE } from "@/lib/booking-rules";
 import { cancelSubscriptionAction } from "@/lib/actions/subscription";
@@ -42,11 +46,14 @@ export function ConfirmReserve({
   label,
   blocked,
   cost = null,
+  trial = false,
 }: {
   refStr: string;
   label: string;
   blocked?: string | null;
   cost?: ReserveCost | null;
+  /** Puede reservar esta clase como clase muestra, sin costo (0030). */
+  trial?: boolean;
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -76,6 +83,25 @@ export function ConfirmReserve({
     });
   }
 
+  function confirmTrial() {
+    start(async () => {
+      const res = await reserveTrialAction(refStr);
+      setMsg({
+        ok: res.ok,
+        text: res.ok
+          ? "¡Tu clase muestra está reservada! Te esperamos."
+          : bookingMessage(res.code),
+      });
+      if (res.ok) {
+        trackPixel("Schedule");
+        router.refresh();
+      }
+    });
+  }
+
+  // La muestra solo aplica a clases normales; una especial sigue su flujo.
+  const useTrial = trial && !special;
+
   return (
     <div className="surface-card mb-8 rounded-2xl border-l-2 border-pink px-6 py-5 shadow-soft">
       {blocked && !msg ? (
@@ -90,6 +116,11 @@ export function ConfirmReserve({
             <p className="text-sm text-ink">
               Confirmar reserva: <span className="font-medium">{label}</span>
             </p>
+            {useTrial ? (
+              <p className="mt-1 text-xs text-gold">
+                Es tu primera vez: esta clase es de muestra, sin costo.
+              </p>
+            ) : null}
             {special && cost ? (
               <p className="mt-1 text-xs text-ink-soft">
                 {payOnly
@@ -110,7 +141,15 @@ export function ConfirmReserve({
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {canUseCredits ? (
+            {useTrial ? (
+              <button
+                onClick={confirmTrial}
+                disabled={pending}
+                className="rounded-full bg-pink px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-white shadow-soft transition-colors hover:bg-pink-strong disabled:opacity-60"
+              >
+                {pending ? "Reservando…" : "Reservar clase muestra"}
+              </button>
+            ) : canUseCredits ? (
               <button
                 onClick={confirm}
                 disabled={pending}
@@ -135,7 +174,7 @@ export function ConfirmReserve({
                 Pagar {formatMxn(cost.pricing.priceMxn)} aparte
               </Link>
             ) : null}
-            {!canUseCredits && !payHref ? (
+            {!useTrial && !canUseCredits && !payHref ? (
               <Link
                 href="/paquetes"
                 className="rounded-full bg-pink px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-white shadow-soft transition-colors hover:bg-pink-strong"

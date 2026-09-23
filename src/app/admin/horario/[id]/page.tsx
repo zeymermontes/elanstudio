@@ -69,6 +69,7 @@ export default async function RosterPage({
                 email={r.email}
                 attended={r.attended}
                 canCancel={profile.role === "admin"}
+                trial={r.trial}
               />
             ))}
           </div>

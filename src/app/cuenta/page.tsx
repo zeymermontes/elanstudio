@@ -32,7 +32,9 @@ import {
 } from "@/lib/format";
 
 /** Huso con el que se muestra la hora de una reserva: el de la sede de su clase. */
-function bookingOffset(cs: { locations: { utc_offset_minutes: number } | null }) {
+function bookingOffset(cs: {
+  locations: { utc_offset_minutes: number } | null;
+}) {
   return cs.locations?.utc_offset_minutes ?? DEFAULT_UTC_OFFSET_MIN;
 }
 
@@ -53,7 +55,11 @@ type BookingRow = {
 export default async function CuentaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reservar?: string; pago?: string; suscripcion?: string }>;
+  searchParams: Promise<{
+    reservar?: string;
+    pago?: string;
+    suscripcion?: string;
+  }>;
 }) {
   const { reservar, pago, suscripcion } = await searchParams;
 
@@ -96,43 +102,52 @@ export default async function CuentaPage({
     { data: bookings },
     { data: sub },
     { data: rejectedTransfers },
-  ] =
-    await Promise.all([
-      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-      supabase.rpc("credit_balance", { p_user: user.id }),
-      supabase
-        .from("bookings")
-        .select(
-          "session_id, class_sessions!inner(starts_at, status, class_types(name, duration_min), coaches(name), locations(name, utc_offset_minutes))",
-        )
-        .eq("user_id", user.id)
-        .eq("status", "confirmed"),
-      supabase
-        .from("subscriptions")
-        .select("status, current_period_end")
-        .eq("user_id", user.id)
-        .eq("status", "authorized")
-        .order("current_period_end", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      // Transferencias que el admin no pudo confirmar: se le retiraron las
-      // clases y hay que decírselo con calma, no dejar que lo descubra sola.
-      supabase
-        .from("purchases")
-        .select("id, reviewed_at, packages(name), class_sessions(class_types(name))")
-        .eq("user_id", user.id)
-        .eq("method", "transfer")
-        .eq("status", "rejected")
-        .gte("reviewed_at", new Date(sinceMs).toISOString())
-        .order("reviewed_at", { ascending: false }),
-    ]);
+    { data: trialRaw },
+    settingsForTrial,
+  ] = await Promise.all([
+    supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+    supabase.rpc("credit_balance", { p_user: user.id }),
+    supabase
+      .from("bookings")
+      .select(
+        "session_id, class_sessions!inner(starts_at, status, class_types(name, duration_min), coaches(name), locations(name, utc_offset_minutes))",
+      )
+      .eq("user_id", user.id)
+      .eq("status", "confirmed"),
+    supabase
+      .from("subscriptions")
+      .select("status, current_period_end")
+      .eq("user_id", user.id)
+      .eq("status", "authorized")
+      .order("current_period_end", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    // Transferencias que el admin no pudo confirmar: se le retiraron las
+    // clases y hay que decírselo con calma, no dejar que lo descubra sola.
+    supabase
+      .from("purchases")
+      .select(
+        "id, reviewed_at, packages(name), class_sessions(class_types(name))",
+      )
+      .eq("user_id", user.id)
+      .eq("method", "transfer")
+      .eq("status", "rejected")
+      .gte("reviewed_at", new Date(sinceMs).toISOString())
+      .order("reviewed_at", { ascending: false }),
+    // Clase muestra (0030): nunca ha tenido clases y no la ha usado.
+    supabase.rpc("trial_eligible", { p_user: user.id }),
+    getSettings(),
+  ]);
+  const trialEligible = settingsForTrial.trialClassEnabled && Boolean(trialRaw);
 
   // Vuelta de Mercado Pago tras autorizar el plan mensual: el pixel marca la
   // suscripción con el precio del plan. El webhook puede no haber llegado
   // todavía, así que se toma la última fila de la alumna, esté en pending o
   // ya authorized.
-  let subPixel: { id: string; params: ReturnType<typeof packageParams> } | null =
-    null;
+  let subPixel: {
+    id: string;
+    params: ReturnType<typeof packageParams>;
+  } | null = null;
   if (suscripcion) {
     const { data: latest } = await supabase
       .from("subscriptions")
@@ -174,7 +189,7 @@ export default async function CuentaPage({
         new Date(b.class_sessions.starts_at).getTime() >= nowMs,
     )
     .sort((a, b) =>
-      (a.class_sessions!.starts_at).localeCompare(b.class_sessions!.starts_at),
+      a.class_sessions!.starts_at.localeCompare(b.class_sessions!.starts_at),
     );
 
   /**
@@ -298,7 +313,9 @@ export default async function CuentaPage({
           <p className="text-[0.7rem] uppercase tracking-luxe text-gold">
             Mi cuenta
           </p>
-          <h1 className="mt-1 font-serif text-4xl text-ink">Hola, {firstName}</h1>
+          <h1 className="mt-1 font-serif text-4xl text-ink">
+            Hola, {firstName}
+          </h1>
         </div>
         <div className="flex items-center gap-4">
           <Link
@@ -321,7 +338,8 @@ export default async function CuentaPage({
       {rejectedTransfers?.length ? (
         <RejectedTransfers
           names={rejectedTransfers.map((r) => {
-            const p = r.packages as { name: string } | { name: string }[] | null;
+            const p = r.packages as
+              { name: string } | { name: string }[] | null;
             const pkgName = Array.isArray(p) ? p[0]?.name : p?.name;
             if (pkgName) return pkgName;
             // Un lugar pagado aparte: la clase, no un paquete.
@@ -365,6 +383,7 @@ export default async function CuentaPage({
           label={reservarLabel}
           blocked={reservarBlocked}
           cost={reservarCost}
+          trial={trialEligible && !subActive}
         />
       ) : null}
 
@@ -374,10 +393,18 @@ export default async function CuentaPage({
           <Sparkles size={22} strokeWidth={1.25} className="text-pink" />
           <div>
             <p className="font-serif text-3xl text-ink">
-              {subActive ? "Ilimitado" : credits}
+              {subActive
+                ? "Ilimitado"
+                : trialEligible && credits <= 0
+                  ? "Clase muestra"
+                  : credits}
             </p>
             <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">
-              {subActive ? "Suscripción mensual activa" : "Clases disponibles"}
+              {subActive
+                ? "Suscripción mensual activa"
+                : trialEligible && credits <= 0
+                  ? "Tu primera clase, sin costo"
+                  : "Clases disponibles"}
             </p>
           </div>
         </div>
@@ -425,10 +452,8 @@ export default async function CuentaPage({
                     {cs.class_types?.name}
                   </h3>
                   <p className="mt-1 text-xs text-ink-soft">
-                    {cap(
-                      formatDayLabel(cs.starts_at, bookingOffset(cs)),
-                    )}{" "}
-                    · {formatTime(cs.starts_at, bookingOffset(cs))}
+                    {cap(formatDayLabel(cs.starts_at, bookingOffset(cs)))} ·{" "}
+                    {formatTime(cs.starts_at, bookingOffset(cs))}
                     {cs.coaches?.name ? ` · ${cs.coaches.name}` : ""}
                     {cs.locations?.name ? ` · ${cs.locations.name}` : ""}
                   </p>
@@ -532,13 +557,15 @@ function RejectedTransfers({
 function DemoNotice() {
   return (
     <div className="mx-auto max-w-xl px-5 py-24 text-center">
-      <p className="text-[0.7rem] uppercase tracking-luxe text-gold">Mi cuenta</p>
+      <p className="text-[0.7rem] uppercase tracking-luxe text-gold">
+        Mi cuenta
+      </p>
       <h1 className="mt-2 font-serif text-4xl text-ink">Modo demostración</h1>
       <div className="gold-rule mx-auto my-6 w-24" />
       <p className="text-sm leading-relaxed text-ink-soft">
-        Las cuentas, reservas y pagos se activan al configurar Supabase y Mercado
-        Pago. Mientras tanto, puedes explorar las clases, paquetes, coaches y
-        horarios del sitio.
+        Las cuentas, reservas y pagos se activan al configurar Supabase y
+        Mercado Pago. Mientras tanto, puedes explorar las clases, paquetes,
+        coaches y horarios del sitio.
       </p>
       <Link
         href="/horarios"

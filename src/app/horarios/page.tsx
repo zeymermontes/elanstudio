@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Sun, Sunset } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs } from "@/components/admin/tabs";
-import { getSchedule, getSpecialEvents } from "@/lib/data";
+import { getSchedule, getSpecialEvents, getSettings } from "@/lib/data";
+import Link from "next/link";
+import { Sparkles } from "lucide-react";
 import {
   formatDayLabel,
   formatTabDay,
@@ -128,9 +130,10 @@ export default async function HorariosPage({
   searchParams: Promise<{ dia?: string; clase?: string }>;
 }) {
   const { dia, clase } = await searchParams;
-  const [slots, allEvents] = await Promise.all([
+  const [slots, allEvents, settings] = await Promise.all([
     getSchedule(WEEK_DAYS),
     getSpecialEvents(),
+    getSettings(),
   ]);
 
   // Server component (force-dynamic): reading the current time is intentional.
@@ -206,6 +209,28 @@ export default async function HorariosPage({
       />
 
       <div className="mx-auto max-w-4xl px-5">
+        {settings.trialClassEnabled ? (
+          <div className="mb-10 flex flex-col items-start gap-3 rounded-2xl border border-gold/40 bg-gold-soft/20 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="flex items-start gap-2.5 text-sm text-ink">
+              <Sparkles
+                size={16}
+                strokeWidth={1.5}
+                className="mt-0.5 shrink-0 text-gold"
+              />
+              <span>
+                <span className="font-medium">¿Primera vez en ÉLAN?</span> Tu
+                primera clase es de muestra, sin costo. Crea tu cuenta, elige
+                una clase y reserva.
+              </span>
+            </p>
+            <Link
+              href="/registro"
+              className="shrink-0 rounded-full border border-gold/50 px-5 py-2 text-[0.7rem] uppercase tracking-[0.15em] text-ink transition-colors hover:border-gold hover:text-pink-strong"
+            >
+              Crear mi cuenta
+            </Link>
+          </div>
+        ) : null}
         {dayTabs.length === 0 ? (
           laterEvents.length === 0 ? (
             <p className="text-center text-sm text-ink-soft">

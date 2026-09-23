@@ -51,6 +51,8 @@ export async function getSettings(): Promise<SiteSettings> {
     transferEnabled: Boolean(data.transfer_enabled),
     transferAccounts: data.transfer_accounts ?? "",
     metaPixelId: data.meta_pixel_id ?? "",
+    trialClassEnabled:
+      data.trial_class_enabled == null ? true : Boolean(data.trial_class_enabled),
   };
 }
 
