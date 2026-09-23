@@ -4,6 +4,7 @@ import { cap, dateBadge, formatDayLabel, formatTime } from "@/lib/format";
 import { encodeRef } from "@/lib/schedule-ref";
 import { LocationChip } from "@/components/location-chip";
 import { SlotCost } from "@/components/slot-cost";
+import { slotPath } from "@/lib/schedule-links";
 import { slotBlockedLabel } from "@/lib/booking-rules";
 import type { ScheduleSlot } from "@/lib/types";
 
@@ -66,11 +67,17 @@ function EventCard({
       </div>
 
       <div className="min-w-0 flex-1">
-        <h3 className="font-serif text-2xl text-ink">{e.classType.name}</h3>
-        <p className="mt-1 text-xs text-ink-soft">
-          {cap(formatDayLabel(e.startsAt, e.utcOffsetMin))} ·{" "}
-          {formatTime(e.startsAt, e.utcOffsetMin)}
-        </p>
+        {/* El detalle vive en /horarios: el link directo abre esa clase con
+            su descripción, coach y botón de compartir. */}
+        <Link href={slotPath(e)} className="group block">
+          <h3 className="font-serif text-2xl text-ink transition-colors group-hover:text-pink-strong">
+            {e.classType.name}
+          </h3>
+          <p className="mt-1 text-xs text-ink-soft">
+            {cap(formatDayLabel(e.startsAt, e.utcOffsetMin))} ·{" "}
+            {formatTime(e.startsAt, e.utcOffsetMin)}
+          </p>
+        </Link>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
           {e.coach ? (
             <span className="inline-flex items-center gap-1">
@@ -88,6 +95,12 @@ function EventCard({
           </span>
         </div>
         <SlotCost pricing={e.pricing} className="mt-2" />
+        <Link
+          href={slotPath(e)}
+          className="mt-2 inline-block text-[0.7rem] uppercase tracking-[0.12em] text-pink-strong transition-colors hover:text-ink"
+        >
+          Ver detalle
+        </Link>
       </div>
 
       <div className="shrink-0">
