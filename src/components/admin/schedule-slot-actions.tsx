@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ClipboardCheck, X } from "lucide-react";
 import { coverCoachAction, cancelClassAction } from "@/lib/actions/admin";
 import type { Coach } from "@/lib/types";
+import { CopyLinkButton } from "./copy-link-button";
 
 /**
  * Per-slot admin actions on the schedule: change the coach for that single date
@@ -17,11 +18,14 @@ export function ScheduleSlotActions({
   coaches,
   currentCoachId,
   sessionId,
+  sharePath,
 }: {
   refStr: string;
   coaches: Coach[];
   currentCoachId: string | null;
   sessionId: string | null;
+  /** Deep link to this class in /horarios, to paste in a social post. */
+  sharePath: string;
 }) {
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -72,6 +76,8 @@ export function ScheduleSlotActions({
           <ClipboardCheck size={13} strokeWidth={1.5} /> Lista
         </Link>
       ) : null}
+
+      <CopyLinkButton path={sharePath} />
 
       <button
         type="button"

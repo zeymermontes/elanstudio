@@ -16,6 +16,8 @@ import { encodeRef } from "@/lib/schedule-ref";
 import { formatDayLabel, formatTime, dayKey, cap } from "@/lib/format";
 import type { ScheduleSlot } from "@/lib/types";
 import { pricingBadges, NOT_IN_PLAN_NOTE } from "@/lib/slot-cost";
+import { slotPath, dayPath, weekdayPath } from "@/lib/schedule-links";
+import { CopyLinkButton } from "@/components/admin/copy-link-button";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +51,10 @@ export default async function AdminHorarioPage() {
       label: `${WEEKDAYS[wd].slice(0, 3)}${slots.length ? ` (${slots.length})` : ""}`,
       content: (
         <div className="space-y-4">
+          <CopyLinkButton
+            path={weekdayPath(wd)}
+            label={`Copiar link de los ${WEEKDAYS[wd].toLowerCase()}`}
+          />
           {slots.length === 0 ? (
             <p className="text-sm text-ink-soft">
               Sin clases el {WEEKDAYS[wd].toLowerCase()}. Agrégalas con el
@@ -79,7 +85,11 @@ export default async function AdminHorarioPage() {
       <h3 className="mb-3 text-[0.7rem] uppercase tracking-luxe text-gold">
         Agregar clase semanal
       </h3>
-      <WeeklyClassForm classTypes={classTypes} coaches={coaches} locations={locations} />
+      <WeeklyClassForm
+        classTypes={classTypes}
+        coaches={coaches}
+        locations={locations}
+      />
 
       <div className="mt-8">
         <h3 className="mb-4 text-[0.7rem] uppercase tracking-luxe text-gold">
@@ -95,7 +105,8 @@ export default async function AdminHorarioPage() {
     <section>
       <p className="mb-6 text-sm text-ink-soft">
         Próximas clases (de tu plantilla + eventos). Aquí cubres a un coach por
-        un día o cancelas una clase puntual.
+        un día o cancelas una clase puntual. «Copiar link» te da el enlace
+        directo a ese día o a esa clase para tus redes.
       </p>
       {byDay.size === 0 ? (
         <p className="text-sm text-ink-soft">No hay clases próximas.</p>
@@ -103,9 +114,20 @@ export default async function AdminHorarioPage() {
         <div className="space-y-8">
           {[...byDay.entries()].map(([day, daySlots]) => (
             <div key={day}>
-              <h3 className="mb-3 font-serif text-xl text-ink">
-                {cap(formatDayLabel(daySlots[0].startsAt, daySlots[0].utcOffsetMin))}
-              </h3>
+              <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <h3 className="font-serif text-xl text-ink">
+                  {cap(
+                    formatDayLabel(
+                      daySlots[0].startsAt,
+                      daySlots[0].utcOffsetMin,
+                    ),
+                  )}
+                </h3>
+                <CopyLinkButton
+                  path={dayPath(day)}
+                  label="Copiar link del día"
+                />
+              </div>
               <div className="space-y-3">
                 {daySlots.map((s) => (
                   <article
@@ -115,12 +137,14 @@ export default async function AdminHorarioPage() {
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="font-serif text-lg text-ink">
-                          {formatTime(s.startsAt, s.utcOffsetMin)} · {s.classType.name}
+                          {formatTime(s.startsAt, s.utcOffsetMin)} ·{" "}
+                          {s.classType.name}
                         </p>
                         <p className="text-xs text-ink-soft">
                           {s.coach?.name ?? "Sin coach"}
-                          {s.location?.name ? ` · ${s.location.name}` : ""} ·{" "}
-                          {s.booked}/{s.capacity} reservas
+                          {s.location?.name
+                            ? ` · ${s.location.name}`
+                            : ""} · {s.booked}/{s.capacity} reservas
                         </p>
                       </div>
                     </div>
@@ -128,7 +152,10 @@ export default async function AdminHorarioPage() {
                       refStr={encodeRef(s.ref)}
                       coaches={coaches}
                       currentCoachId={s.coach?.id ?? null}
-                      sessionId={s.ref.kind === "session" ? s.ref.sessionId : null}
+                      sessionId={
+                        s.ref.kind === "session" ? s.ref.sessionId : null
+                      }
+                      sharePath={slotPath(s)}
                     />
                   </article>
                 ))}
@@ -147,7 +174,11 @@ export default async function AdminHorarioPage() {
         Crea una clase o evento único (fuera del horario semanal). Los eventos
         se ven en Horarios desde que los creas, por lejana que sea la fecha.
       </p>
-      <SessionForm classTypes={classTypes} coaches={coaches} locations={locations} />
+      <SessionForm
+        classTypes={classTypes}
+        coaches={coaches}
+        locations={locations}
+      />
 
       <div className="mt-8">
         <h3 className="mb-4 text-[0.7rem] uppercase tracking-luxe text-gold">
@@ -169,6 +200,8 @@ export default async function AdminHorarioPage() {
                     ? ` · ${pricingBadges(e.pricing).join(" ")}`
                     : ""}
                   {!e.pricing.planIncluded ? ` · ${NOT_IN_PLAN_NOTE}` : ""}
+                  {" · "}
+                  <CopyLinkButton path={slotPath(e)} />
                 </p>
                 <SessionForm
                   event={e}

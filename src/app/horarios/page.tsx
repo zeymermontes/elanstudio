@@ -3,10 +3,17 @@ import { Sun, Sunset } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs } from "@/components/admin/tabs";
 import { getSchedule, getSpecialEvents } from "@/lib/data";
-import { formatDayLabel, formatTabDay, dayKey, zonedHour, cap } from "@/lib/format";
+import {
+  formatDayLabel,
+  formatTabDay,
+  dayKey,
+  zonedHour,
+  cap,
+} from "@/lib/format";
 import { ScheduleSlotItem } from "@/components/schedule-slot-item";
 import { encodeRef } from "@/lib/schedule-ref";
 import { slotBlockedLabel } from "@/lib/booking-rules";
+import { resolveDay, slotMatches } from "@/lib/schedule-links";
 import type { ScheduleSlot } from "@/lib/types";
 
 /**
@@ -15,6 +22,8 @@ import type { ScheduleSlot } from "@/lib/types";
  * and every card on a render has to read the same clock.
  */
 type BlockedFor = (slot: ScheduleSlot) => string | null;
+/** Is this the slot a deep link (?clase=) points at? */
+type IsTarget = (slot: ScheduleSlot) => boolean;
 
 export const metadata: Metadata = { title: "Horarios" };
 export const dynamic = "force-dynamic";
@@ -24,11 +33,13 @@ function PartOfDay({
   icon: Icon,
   slots,
   blockedFor,
+  isTarget,
 }: {
   title: string;
   icon: typeof Sun;
   slots: ScheduleSlot[];
   blockedFor: BlockedFor;
+  isTarget: IsTarget;
 }) {
   if (slots.length === 0) return null;
   return (
@@ -43,6 +54,7 @@ function PartOfDay({
             slot={s}
             refStr={encodeRef(s.ref)}
             blocked={blockedFor(s)}
+            autoOpen={isTarget(s)}
           />
         ))}
       </div>
@@ -63,7 +75,11 @@ function groupByDay(slots: ScheduleSlot[]): [string, ScheduleSlot[]][] {
 }
 
 /** Build one tab per calendar day (with a morning/afternoon split) for a set of slots. */
-function buildDayTabs(slots: ScheduleSlot[], blockedFor: BlockedFor) {
+function buildDayTabs(
+  slots: ScheduleSlot[],
+  blockedFor: BlockedFor,
+  isTarget: IsTarget,
+) {
   return groupByDay(slots).map(([date, daySlots]) => {
     const morning = daySlots.filter(
       (s) => zonedHour(s.startsAt, s.utcOffsetMin) < 12,
@@ -77,7 +93,9 @@ function buildDayTabs(slots: ScheduleSlot[], blockedFor: BlockedFor) {
       content: (
         <div>
           <h2 className="mb-6 font-serif text-2xl text-ink">
-            {cap(formatDayLabel(daySlots[0].startsAt, daySlots[0].utcOffsetMin))}
+            {cap(
+              formatDayLabel(daySlots[0].startsAt, daySlots[0].utcOffsetMin),
+            )}
           </h2>
           <div className="space-y-9">
             <PartOfDay
@@ -85,12 +103,14 @@ function buildDayTabs(slots: ScheduleSlot[], blockedFor: BlockedFor) {
               icon={Sun}
               slots={morning}
               blockedFor={blockedFor}
+              isTarget={isTarget}
             />
             <PartOfDay
               title="Tarde"
               icon={Sunset}
               slots={afternoon}
               blockedFor={blockedFor}
+              isTarget={isTarget}
             />
           </div>
         </div>
@@ -102,7 +122,12 @@ function buildDayTabs(slots: ScheduleSlot[], blockedFor: BlockedFor) {
 /** The recurring template is only expanded a week out; events reach much further. */
 const WEEK_DAYS = 7;
 
-export default async function HorariosPage() {
+export default async function HorariosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dia?: string; clase?: string }>;
+}) {
+  const { dia, clase } = await searchParams;
   const [slots, allEvents] = await Promise.all([
     getSchedule(WEEK_DAYS),
     getSpecialEvents(),
@@ -112,6 +137,7 @@ export default async function HorariosPage() {
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
   const blockedFor: BlockedFor = (s) => slotBlockedLabel(s, nowMs);
+  const isTarget: IsTarget = (s) => !!clase && slotMatches(s, clase);
 
   // Events inside the week already have their own day tab; the rest would be
   // invisible without a section of their own, which is the point of listing
@@ -124,10 +150,7 @@ export default async function HorariosPage() {
   );
 
   // Group by branch so users can filter the week by location.
-  const byLocation = new Map<
-    string,
-    { name: string; slots: ScheduleSlot[] }
-  >();
+  const byLocation = new Map<string, { name: string; slots: ScheduleSlot[] }>();
   for (const s of slots) {
     const id = s.location?.id ?? "__none";
     const name = s.location?.name ?? "Sin sede";
@@ -139,17 +162,37 @@ export default async function HorariosPage() {
     a[1].name.localeCompare(b[1].name, "es"),
   );
 
-  const dayTabs = buildDayTabs(slots, blockedFor);
+  const dayTabs = buildDayTabs(slots, blockedFor, isTarget);
   const showLocationFilter = locations.length > 1;
+
+  // Deep link: the day asked for (?dia=), or the day of the class asked for
+  // (?clase=). A weekday name resolves to its next occurrence in the week.
+  const target = clase ? slots.find(isTarget) : undefined;
+  const initialDay =
+    (dia
+      ? resolveDay(
+          dia,
+          dayTabs.map((t) => t.key),
+        )
+      : null) ?? (target ? dayKey(target.startsAt, target.utcOffsetMin) : null);
 
   // With more than one branch, wrap the day tabs in an outer "location" tab bar.
   const locationTabs = showLocationFilter
     ? [
-        { key: "todas", label: "Todas", content: <Tabs tabs={dayTabs} /> },
+        {
+          key: "todas",
+          label: "Todas",
+          content: <Tabs tabs={dayTabs} initialKey={initialDay} />,
+        },
         ...locations.map(([id, group]) => ({
           key: id,
           label: group.name,
-          content: <Tabs tabs={buildDayTabs(group.slots, blockedFor)} />,
+          content: (
+            <Tabs
+              tabs={buildDayTabs(group.slots, blockedFor, isTarget)}
+              initialKey={initialDay}
+            />
+          ),
         })),
       ]
     : [];
@@ -172,7 +215,7 @@ export default async function HorariosPage() {
         ) : showLocationFilter ? (
           <Tabs tabs={locationTabs} />
         ) : (
-          <Tabs tabs={dayTabs} />
+          <Tabs tabs={dayTabs} initialKey={initialDay} />
         )}
 
         {laterEvents.length > 0 ? (
@@ -185,13 +228,13 @@ export default async function HorariosPage() {
                 Eventos especiales
               </h2>
               <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-soft">
-                Fechas únicas fuera del horario semanal. Puedes reservar tu lugar
-                desde ahora.
+                Fechas únicas fuera del horario semanal. Puedes reservar tu
+                lugar desde ahora.
               </p>
             </div>
             <div className="space-y-9">
               {groupByDay(laterEvents).map(([day, daySlots]) => (
-                <section key={day}>
+                <section key={day} id={`dia-${day}`}>
                   <h3 className="mb-3 text-[0.7rem] uppercase tracking-luxe text-gold">
                     {cap(
                       formatDayLabel(
@@ -207,6 +250,7 @@ export default async function HorariosPage() {
                         slot={e}
                         refStr={encodeRef(e.ref)}
                         blocked={blockedFor(e)}
+                        autoOpen={isTarget(e)}
                       />
                     ))}
                   </div>

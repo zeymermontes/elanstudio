@@ -9,10 +9,17 @@ import { useState, type ReactNode } from "react";
  */
 export function Tabs({
   tabs,
+  initialKey,
 }: {
   tabs: { key: string; label: string; content: ReactNode }[];
+  /** Tab to open first (a deep link); falls back to the first one. */
+  initialKey?: string | null;
 }) {
-  const [active, setActive] = useState(tabs[0]?.key);
+  const [active, setActive] = useState(
+    initialKey && tabs.some((t) => t.key === initialKey)
+      ? initialKey
+      : tabs[0]?.key,
+  );
 
   return (
     <div>

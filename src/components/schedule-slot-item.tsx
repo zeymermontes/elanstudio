@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Clock, User, X, Signal, ArrowRight } from "lucide-react";
 import { formatDayLabel, formatTime, cap } from "@/lib/format";
 import { ReserveButton } from "@/components/reserve-button";
 import { LocationChip } from "@/components/location-chip";
 import { SlotCost } from "@/components/slot-cost";
+import { ShareButton } from "@/components/share-button";
+import { slotPath } from "@/lib/schedule-links";
 import { BOOKING_WINDOW_NOTE } from "@/lib/booking-rules";
 import type { ScheduleSlot } from "@/lib/types";
 
@@ -22,17 +24,30 @@ export function ScheduleSlotItem({
   slot,
   refStr,
   blocked,
+  autoOpen = false,
 }: {
   slot: ScheduleSlot;
   refStr: string;
   blocked: string | null;
+  /** Deep link (?clase=): open the detail on arrival and scroll to the card. */
+  autoOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
   const full = slot.spotsLeft === 0;
+  const card = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (autoOpen) card.current?.scrollIntoView({ block: "center" });
+  }, [autoOpen]);
 
   return (
     <>
-      <article className="surface-card flex flex-col gap-4 rounded-2xl px-6 py-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+      <article
+        ref={card}
+        className={`surface-card flex flex-col gap-4 rounded-2xl px-6 py-5 shadow-soft sm:flex-row sm:items-center sm:justify-between ${
+          autoOpen ? "ring-1 ring-pink" : ""
+        }`}
+      >
         {/* Click the info to open the detail modal */}
         <div className="flex items-center gap-5 text-left">
           <button
@@ -147,7 +162,8 @@ function Modal({
 
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs uppercase tracking-[0.12em] text-ink-soft">
           <span className="inline-flex items-center gap-1.5">
-            <Clock size={13} strokeWidth={1.5} /> {slot.classType.durationMin} min
+            <Clock size={13} strokeWidth={1.5} /> {slot.classType.durationMin}{" "}
+            min
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Signal size={13} strokeWidth={1.5} /> {slot.classType.level}
@@ -173,7 +189,11 @@ function Modal({
           <div className="mt-6 flex items-start gap-4 rounded-2xl bg-cream/60 px-4 py-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-pink-soft to-cream">
               {c.photoUrl ? (
-                <img src={c.photoUrl} alt={c.name} className="h-full w-full object-cover" />
+                <img
+                  src={c.photoUrl}
+                  alt={c.name}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <span className="font-serif text-lg italic text-pink-strong/60">
                   {c.name
@@ -199,10 +219,10 @@ function Modal({
           </div>
         ) : null}
 
-        <p
-          className={`mt-6 text-sm ${full ? "text-ink-soft" : "text-gold"}`}
-        >
-          {full ? "Esta clase está llena." : `${slot.spotsLeft} lugares disponibles`}
+        <p className={`mt-6 text-sm ${full ? "text-ink-soft" : "text-gold"}`}>
+          {full
+            ? "Esta clase está llena."
+            : `${slot.spotsLeft} lugares disponibles`}
         </p>
         {blocked && !full ? (
           <p className="mt-1.5 text-xs leading-relaxed text-ink-soft">
@@ -211,6 +231,11 @@ function Modal({
         ) : null}
 
         <div className="mt-5 flex items-center justify-end gap-3">
+          <ShareButton
+            path={slotPath(slot)}
+            title={`${slot.classType.name} · ÉLANSTUDIO`}
+            className="mr-auto"
+          />
           <button
             type="button"
             onClick={onClose}

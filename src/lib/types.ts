@@ -142,6 +142,8 @@ export type ScheduleSlot = {
   featured: boolean;
   /** What booking it takes — see SlotPricing. */
   pricing: SlotPricing;
+  /** Template behind a recurring slot (also once materialized); null for events. */
+  weeklyId: string | null;
 };
 
 /**

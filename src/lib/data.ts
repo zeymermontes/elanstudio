@@ -333,6 +333,7 @@ function toEventSlot(
     isEvent: true,
     featured: Boolean(s.featured),
     pricing: rowPricing(s),
+    weeklyId: null,
   };
 }
 
@@ -422,6 +423,7 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           isEvent: false,
           featured: false,
           pricing: REGULAR_PRICING,
+          weeklyId: null,
         };
       })
       .filter((s): s is ScheduleSlot => s !== null)
@@ -508,6 +510,7 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           isEvent: false,
           featured: false,
           pricing: REGULAR_PRICING,
+          weeklyId: w.id,
         });
       } else {
         const endsAt = new Date(startsAt.getTime() + w.durationMin * 60000);
@@ -525,6 +528,7 @@ export async function getSchedule(daysAhead = 14): Promise<ScheduleSlot[]> {
           isEvent: false,
           featured: false,
           pricing: REGULAR_PRICING,
+          weeklyId: w.id,
         });
       }
     }
