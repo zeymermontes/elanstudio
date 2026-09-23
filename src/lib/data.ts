@@ -293,7 +293,8 @@ export const REGULAR_PRICING: SlotPricing = {
 export function rowPricing(s: Row): SlotPricing {
   const price = s.price_mxn == null ? null : Number(s.price_mxn);
   return {
-    creditCost: Math.max(1, Number(s.credit_cost ?? 1)),
+    // 0 = pago forzoso: solo se paga aparte (0028).
+    creditCost: Math.max(0, Number(s.credit_cost ?? 1)),
     priceMxn: price && price > 0 ? price : null,
     planIncluded: s.plan_included == null ? true : Boolean(s.plan_included),
   };

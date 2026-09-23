@@ -150,7 +150,7 @@ export type ScheduleSlot = {
  * separately (card or transfer), or be left out of the unlimited plan.
  */
 export type SlotPricing = {
-  /** Credits the booking deducts from a package. */
+  /** Credits the booking deducts from a package. 0 = only payable separately. */
   creditCost: number;
   /** Price to pay for it separately, in MXN. null = only bookable with credits. */
   priceMxn: number | null;

@@ -9,7 +9,12 @@ import { cancelSubscriptionAction } from "@/lib/actions/subscription";
 import { trackPixel } from "@/lib/pixel";
 import Link from "next/link";
 import { formatMxn } from "@/lib/format";
-import { creditsLabel, isSpecialPricing, NOT_IN_PLAN_NOTE } from "@/lib/slot-cost";
+import {
+  creditsLabel,
+  isSpecialPricing,
+  isPayOnly,
+  NOT_IN_PLAN_NOTE,
+} from "@/lib/slot-cost";
 import type { SlotPricing } from "@/lib/types";
 
 /**
@@ -50,9 +55,12 @@ export function ConfirmReserve({
   // Clase especial: decidir aquí qué botones ofrecer, con la misma regla que
   // book_session aplica después (la mensualidad solo cubre lo incluido).
   const special = cost !== null && isSpecialPricing(cost.pricing);
-  const coveredByPlan = !!cost && cost.subActive && cost.pricing.planIncluded;
+  const payOnly = !!cost && isPayOnly(cost.pricing);
+  const coveredByPlan =
+    !!cost && !payOnly && cost.subActive && cost.pricing.planIncluded;
   const canUseCredits =
-    !cost || coveredByPlan || cost.credits >= cost.pricing.creditCost;
+    !cost ||
+    (!payOnly && (coveredByPlan || cost.credits >= cost.pricing.creditCost));
   const payHref = cost?.pricing.priceMxn
     ? `/comprar/evento/${cost.sessionId}`
     : null;
@@ -73,9 +81,7 @@ export function ConfirmReserve({
       {blocked && !msg ? (
         <p className="text-sm text-pink-strong">{bookingMessage(blocked)}</p>
       ) : msg ? (
-        <p
-          className={`text-sm ${msg.ok ? "text-gold" : "text-pink-strong"}`}
-        >
+        <p className={`text-sm ${msg.ok ? "text-gold" : "text-pink-strong"}`}>
           {msg.text}
         </p>
       ) : (
@@ -86,16 +92,18 @@ export function ConfirmReserve({
             </p>
             {special && cost ? (
               <p className="mt-1 text-xs text-ink-soft">
-                {coveredByPlan
-                  ? "Incluida en tu plan mensual."
-                  : `Esta clase especial descuenta ${creditsLabel(cost.pricing.creditCost)}${
-                      cost.credits >= cost.pricing.creditCost
-                        ? ` · tienes ${creditsLabel(cost.credits)}`
-                        : cost.credits > 0
-                          ? ` · solo tienes ${creditsLabel(cost.credits)}`
-                          : " · no tienes clases disponibles"
-                    }.`}
-                {cost.subActive && !cost.pricing.planIncluded ? (
+                {payOnly
+                  ? "Esta clase especial solo se paga aparte; no descuenta clases ni la cubre la mensualidad."
+                  : coveredByPlan
+                    ? "Incluida en tu plan mensual."
+                    : `Esta clase especial descuenta ${creditsLabel(cost.pricing.creditCost)}${
+                        cost.credits >= cost.pricing.creditCost
+                          ? ` · tienes ${creditsLabel(cost.credits)}`
+                          : cost.credits > 0
+                            ? ` · solo tienes ${creditsLabel(cost.credits)}`
+                            : " · no tienes clases disponibles"
+                      }.`}
+                {!payOnly && cost.subActive && !cost.pricing.planIncluded ? (
                   <span className="text-pink-strong"> {NOT_IN_PLAN_NOTE}.</span>
                 ) : null}
               </p>

@@ -384,13 +384,19 @@ export async function saveSessionAction(
   const capacity = num(fd, "capacity") || ct?.default_capacity || 10;
 
   // Costo (0027). Una clase normal: 1 clase, sin precio, incluida en el plan.
-  const creditCost = Math.floor(num(fd, "credit_cost")) || 1;
-  if (creditCost < 1)
-    return { error: "La clase tiene que descontar al menos 1 clase." };
+  // 0 = pago forzoso (0028): solo se paga aparte, así que exige precio y
+  // queda fuera del plan por definición.
+  const costRaw = str(fd, "credit_cost");
+  const creditCost = costRaw === "" ? 1 : Math.floor(Number(costRaw));
+  if (!Number.isFinite(creditCost) || creditCost < 0)
+    return { error: "Las clases que descuenta deben ser 0 o más." };
   const priceRaw = str(fd, "price_mxn");
   const priceMxn = priceRaw ? Math.round(Number(priceRaw) * 100) / 100 : null;
   if (priceMxn !== null && !(priceMxn > 0))
     return { error: "El precio aparte debe ser mayor a cero, o déjalo vacío." };
+  if (creditCost === 0 && priceMxn === null)
+    return { error: "Con 0 clases la clase solo se paga aparte: ponle un precio." };
+  const payOnly = creditCost === 0;
 
   const row = {
     class_type_id: classTypeId,
@@ -402,7 +408,7 @@ export async function saveSessionAction(
     featured: fd.get("featured") === "on",
     credit_cost: creditCost,
     price_mxn: priceMxn,
-    plan_included: fd.get("plan_included") === "on",
+    plan_included: !payOnly && fd.get("plan_included") === "on",
   };
 
   // El filtro por weekly_class_id null es un cinturón de seguridad: este

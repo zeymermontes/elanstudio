@@ -8,7 +8,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { loadPayableEvent, PAYABLE_EVENT_MESSAGES } from "@/lib/event-checkout";
 import { formatMxn, formatDayLabel, formatTime, cap } from "@/lib/format";
-import { creditsLabel, NOT_IN_PLAN_NOTE } from "@/lib/slot-cost";
+import { creditsLabel, isPayOnly, NOT_IN_PLAN_NOTE } from "@/lib/slot-cost";
 import { EmbeddedCheckout } from "@/components/embedded-checkout";
 import { PaymentMethods } from "@/components/payment-methods";
 import { PixelEventOnMount } from "@/components/pixel-event";
@@ -59,7 +59,11 @@ export default async function ComprarEventoPage({
     <div className="mx-auto max-w-xl px-5 py-14">
       <PixelEventOnMount
         event="ViewContent"
-        params={packageParams({ id: event.id, name: event.name, valueMxn: price })}
+        params={packageParams({
+          id: event.id,
+          name: event.name,
+          valueMxn: price,
+        })}
       />
       <Link
         href="/horarios"
@@ -109,23 +113,27 @@ export default async function ComprarEventoPage({
               : ` · ${NOT_IN_PLAN_NOTE.toLowerCase()}`}
           </li>
         </ul>
-        <p className="mt-4 text-xs text-ink-soft">
-          ¿Prefieres usar tus clases? Esta clase descuenta{" "}
-          {creditsLabel(event.pricing.creditCost)}.{" "}
-          <Link
-            href={`/cuenta?reservar=${encodeURIComponent(encodeRef({ kind: "session", sessionId: event.id }))}`}
-            className="text-pink-strong underline-offset-2 hover:underline"
-          >
-            Reservar con mis clases
-          </Link>
-        </p>
+        {isPayOnly(event.pricing) ? null : (
+          <p className="mt-4 text-xs text-ink-soft">
+            ¿Prefieres usar tus clases? Esta clase descuenta{" "}
+            {creditsLabel(event.pricing.creditCost)}.{" "}
+            <Link
+              href={`/cuenta?reservar=${encodeURIComponent(encodeRef({ kind: "session", sessionId: event.id }))}`}
+              className="text-pink-strong underline-offset-2 hover:underline"
+            >
+              Reservar con mis clases
+            </Link>
+          </p>
+        )}
       </div>
 
       {/* Pago */}
       <div className="mt-6">
         {offerTransfer ? (
           <div>
-            <h2 className="mb-4 font-serif text-2xl text-ink">¿Cómo quieres pagar?</h2>
+            <h2 className="mb-4 font-serif text-2xl text-ink">
+              ¿Cómo quieres pagar?
+            </h2>
             <PaymentMethods
               eventId={event.id}
               packageName={event.name}

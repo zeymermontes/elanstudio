@@ -120,11 +120,11 @@ export function SessionForm({
             Costo de la clase
           </legend>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Clases que descuenta">
+            <Field label="Clases que descuenta (0 = solo pago aparte)">
               <input
                 type="number"
                 name="credit_cost"
-                min={1}
+                min={0}
                 step={1}
                 defaultValue={event?.pricing.creditCost ?? 1}
                 required
@@ -145,7 +145,8 @@ export function SessionForm({
           </div>
           <p className="mt-2 text-xs text-ink-soft/80">
             Con precio, la alumna elige: gasta sus clases o la paga aparte con
-            tarjeta o transferencia.
+            tarjeta o transferencia. Con 0 clases el pago es forzoso: solo
+            entra pagando el precio, ni con paquete ni con mensualidad.
           </p>
           <label className="mt-4 flex items-start gap-2.5 text-sm text-ink-soft">
             <input

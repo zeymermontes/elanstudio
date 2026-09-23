@@ -11,6 +11,11 @@ export function creditsLabel(n: number): string {
   return `${n} clase${n === 1 ? "" : "s"}`;
 }
 
+/** True when the class can only be paid for separately (credit_cost = 0). */
+export function isPayOnly(p: SlotPricing): boolean {
+  return p.creditCost === 0;
+}
+
 /** True when the slot costs anything other than a regular class. */
 export function isSpecialPricing(p: SlotPricing): boolean {
   return p.creditCost !== 1 || p.priceMxn !== null || !p.planIncluded;
@@ -22,6 +27,8 @@ export function isSpecialPricing(p: SlotPricing): boolean {
  */
 export function pricingBadges(p: SlotPricing): string[] {
   if (!isSpecialPricing(p)) return [];
+  if (isPayOnly(p))
+    return [`Solo pago aparte${p.priceMxn !== null ? ` · ${formatMxn(p.priceMxn)}` : ""}`];
   const out = [creditsLabel(p.creditCost)];
   if (p.priceMxn !== null) out.push(`o ${formatMxn(p.priceMxn)}`);
   return out;

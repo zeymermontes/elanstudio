@@ -11,6 +11,8 @@ const MESSAGES: Record<string, string> = {
   no_credits: "No tienes clases disponibles. Compra un paquete.",
   not_enough:
     "Esta clase especial descuenta más de una clase y no te alcanzan las que tienes. Compra un paquete o págala aparte.",
+  pay_only:
+    "Esta clase solo se paga aparte: no se reserva con clases del paquete ni con la mensualidad.",
   not_in_plan:
     "Esta clase no se incluye en tu plan mensual. Puedes pagarla aparte o con clases de un paquete.",
   already: "Ya tienes una reserva para esta clase.",
