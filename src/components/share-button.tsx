@@ -35,19 +35,25 @@ export function ShareButton({
     }
   }
 
+  // En móvil el texto no cabe junto a Cerrar y Reservar: queda solo el ícono,
+  // como botón redondo del mismo alto que los otros dos.
   return (
     <button
       type="button"
       onClick={share}
-      className={`inline-flex items-center gap-1.5 text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft transition-colors hover:text-pink-strong ${className}`}
+      aria-label={done ? "Link copiado" : label}
+      title={done ? "Link copiado" : label}
+      className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-line text-[0.7rem] uppercase tracking-[0.12em] text-ink-soft transition-colors hover:text-pink-strong h-10 w-10 sm:h-auto sm:w-auto sm:px-4 sm:py-2.5 ${className}`}
     >
       {done ? (
         <>
-          <Check size={13} strokeWidth={1.75} className="text-gold" /> Link copiado
+          <Check size={15} strokeWidth={1.75} className="text-gold" />
+          <span className="hidden sm:inline">Link copiado</span>
         </>
       ) : (
         <>
-          <Share2 size={13} strokeWidth={1.5} /> {label}
+          <Share2 size={15} strokeWidth={1.5} />
+          <span className="hidden sm:inline">{label}</span>
         </>
       )}
     </button>
