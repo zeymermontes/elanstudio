@@ -21,6 +21,7 @@ import {
   NOT_IN_PLAN_NOTE,
 } from "@/lib/slot-cost";
 import type { SlotPricing } from "@/lib/types";
+import { TRIAL_NAME, trialTagline } from "@/lib/trial-copy";
 
 /**
  * What a special class asks of this member (0027): its pricing, how many
@@ -131,9 +132,11 @@ export function ConfirmReserve({
             </p>
             {useTrial ? (
               <p className="mt-1 text-xs text-gold">
-                {paidTrial
-                  ? `Es tu primera vez: esta clase es de muestra por ${formatMxn(trialPriceMxn)}.`
-                  : "Es tu primera vez: esta clase es de muestra, sin costo."}
+                <span className="font-serif text-sm text-ink">
+                  {TRIAL_NAME}
+                </span>{" "}
+                {trialTagline(paidTrial ? trialPriceMxn : null)}
+                {paidTrial ? ` ${formatMxn(trialPriceMxn)}` : ""}
               </p>
             ) : null}
             {special && cost ? (
@@ -162,9 +165,7 @@ export function ConfirmReserve({
                 disabled={pending}
                 className="rounded-full bg-pink px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-white shadow-soft transition-colors hover:bg-pink-strong disabled:opacity-60"
               >
-                {pending
-                  ? "Un momento…"
-                  : `Pagar clase muestra ${formatMxn(trialPriceMxn)}`}
+                {pending ? "Un momento…" : `Pagar ${formatMxn(trialPriceMxn)}`}
               </button>
             ) : useTrial ? (
               <button
@@ -172,7 +173,7 @@ export function ConfirmReserve({
                 disabled={pending}
                 className="rounded-full bg-pink px-6 py-2.5 text-[0.75rem] uppercase tracking-[0.15em] text-white shadow-soft transition-colors hover:bg-pink-strong disabled:opacity-60"
               >
-                {pending ? "Reservando…" : "Reservar clase muestra"}
+                {pending ? "Reservando…" : "Reservar gratis"}
               </button>
             ) : canUseCredits ? (
               <button

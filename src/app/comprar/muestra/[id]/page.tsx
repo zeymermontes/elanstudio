@@ -12,6 +12,7 @@ import { EmbeddedCheckout } from "@/components/embedded-checkout";
 import { PaymentMethods } from "@/components/payment-methods";
 import { PixelEventOnMount } from "@/components/pixel-event";
 import { packageParams } from "@/lib/pixel";
+import { TRIAL_NAME, trialTagline } from "@/lib/trial-copy";
 
 export const metadata: Metadata = { title: "Pagar clase muestra" };
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ export default async function ComprarMuestraPage({
     event.startsAt,
     event.utcOffsetMin,
   )}`;
-  const itemName = `Clase muestra · ${event.name}`;
+  const itemName = `${TRIAL_NAME} · ${event.name}`;
 
   return (
     <div className="mx-auto max-w-xl px-5 py-14">
@@ -73,9 +74,10 @@ export default async function ComprarMuestraPage({
 
       <div className="surface-card rounded-2xl px-7 py-6 shadow-soft">
         <p className="flex items-center gap-1.5 text-[0.7rem] uppercase tracking-luxe text-gold">
-          <Sparkles size={13} strokeWidth={1.5} /> Tu clase muestra
+          <Sparkles size={13} strokeWidth={1.5} /> {TRIAL_NAME}
         </p>
         <h1 className="mt-1 font-serif text-3xl text-ink">{event.name}</h1>
+        <p className="mt-1 text-sm text-ink-soft">{trialTagline(price)}</p>
         <p className="mt-1 text-sm text-ink-soft">{when}</p>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
           {event.coach ? (
@@ -96,7 +98,7 @@ export default async function ComprarMuestraPage({
           <span className="font-serif text-4xl text-pink-strong">
             {formatMxn(price)}
           </span>
-          <span className="text-sm text-ink-soft">precio de primera clase</span>
+          <span className="text-sm text-ink-soft">por tu primera clase</span>
         </div>
         <ul className="mt-4 space-y-1.5 text-sm text-ink-soft">
           <li className="flex items-center gap-2">
@@ -105,7 +107,7 @@ export default async function ComprarMuestraPage({
           </li>
           <li className="flex items-center gap-2">
             <Check size={15} strokeWidth={1.5} className="text-gold" />
-            Solo para tu primera visita al estudio
+            Disponible una sola vez, para nuevas alumnas
           </li>
         </ul>
       </div>

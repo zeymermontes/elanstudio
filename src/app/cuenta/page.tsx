@@ -12,6 +12,7 @@ import {
   type ReserveCost,
 } from "@/components/account-actions";
 import { rowPricing } from "@/lib/data";
+import { TRIAL_NAME, trialTagline, trialPriceLabel } from "@/lib/trial-copy";
 import {
   canCancelBooking,
   CANCEL_WINDOW_NOTE,
@@ -26,7 +27,6 @@ import { packageParams } from "@/lib/pixel";
 import {
   formatDayLabel,
   formatTime,
-  formatMxn,
   cap,
   zonedToUtc,
   DEFAULT_UTC_OFFSET_MIN,
@@ -405,16 +405,18 @@ export default async function CuentaPage({
               {subActive
                 ? "Ilimitado"
                 : trialEligible && credits <= 0
-                  ? "Clase muestra"
+                  ? TRIAL_NAME
                   : credits}
             </p>
             <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">
               {subActive
                 ? "Suscripción mensual activa"
                 : trialEligible && credits <= 0
-                  ? settingsForTrial.trialClassPriceMxn
-                    ? `Tu primera clase por ${formatMxn(settingsForTrial.trialClassPriceMxn)}`
-                    : "Tu primera clase, sin costo"
+                  ? `${trialTagline(settingsForTrial.trialClassPriceMxn)}${
+                      settingsForTrial.trialClassPriceMxn
+                        ? ` ${trialPriceLabel(settingsForTrial.trialClassPriceMxn)}`
+                        : ""
+                    }`
                   : "Clases disponibles"}
             </p>
           </div>

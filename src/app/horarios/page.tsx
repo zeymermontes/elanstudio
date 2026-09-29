@@ -9,7 +9,6 @@ import { Sparkles } from "lucide-react";
 import {
   formatDayLabel,
   formatTabDay,
-  formatMxn,
   dayKey,
   zonedHour,
   cap,
@@ -18,6 +17,7 @@ import { ScheduleSlotItem } from "@/components/schedule-slot-item";
 import { encodeRef } from "@/lib/schedule-ref";
 import { slotBlockedLabel } from "@/lib/booking-rules";
 import { resolveDay, slotMatches } from "@/lib/schedule-links";
+import { TRIAL_NAME, trialTagline, trialPriceLabel } from "@/lib/trial-copy";
 import type { ScheduleSlot } from "@/lib/types";
 
 /**
@@ -237,15 +237,22 @@ export default async function HorariosPage({
                 className="mt-0.5 shrink-0 text-gold"
               />
               <span>
-                <span className="font-medium">¿Primera vez en ÉLAN?</span> Tu
-                primera clase es de muestra
-                {settings.trialClassPriceMxn
-                  ? ` por ${formatMxn(settings.trialClassPriceMxn)}`
-                  : ", sin costo"}
-                .{" "}
-                {trialBanner === "signup"
-                  ? "Crea tu cuenta, elige una clase y reserva."
-                  : "Elige una clase y reserva."}
+                <span className="font-serif text-lg text-ink">
+                  {TRIAL_NAME}
+                </span>
+                <span className="mt-0.5 block">
+                  {trialTagline(settings.trialClassPriceMxn)}
+                  {settings.trialClassPriceMxn ? (
+                    <span className="ml-2 font-serif text-lg text-pink-strong">
+                      {trialPriceLabel(settings.trialClassPriceMxn)}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="mt-0.5 block text-xs text-ink-soft">
+                  {trialBanner === "signup"
+                    ? "Crea tu cuenta, elige una clase y reserva."
+                    : "Elige una clase y reserva."}
+                </span>
               </span>
             </p>
             {trialBanner === "signup" ? (
